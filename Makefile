@@ -2,11 +2,15 @@
 # Override the port if auto-detection picks the wrong one:
 #   make flash PORT=/dev/cu.usbmodemXXXX
 
-SKETCH := firmware/tamagotchi
+SKETCH := firmware
 FQBN   := esp32:esp32:esp32c3:CDCOnBoot=cdc
 BUILD  := $(SKETCH)/build
 BAUD   := 115200
 PORT   ?= $(shell ls /dev/cu.usbmodem* 2>/dev/null | head -1)
+
+# arduino-cli invoked with the project-local config (firmware/arduino-cli.yaml)
+# instead of the global ~/Library/Arduino15 one, so the repo is self-contained.
+ARDUINO := arduino-cli --config-file $(CURDIR)/firmware/arduino-cli.yaml
 
 # All firmware sources, excluding the generated build/ tree.
 SRC    := $(shell find firmware -name build -prune -o -name '*.ino' -print -o -name '*.cpp' -print -o -name '*.h' -print)
@@ -15,29 +19,29 @@ SRC    := $(shell find firmware -name build -prune -o -name '*.ino' -print -o -n
 
 ## build         — compile the sketch
 build:
-	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD) $(SKETCH)
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path $(BUILD) $(SKETCH)
 
 ## db            — regenerate build/compile_commands.json for clangd (Zed)
 db:
-	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD) --only-compilation-database $(SKETCH)
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path $(BUILD) --only-compilation-database $(SKETCH)
 
 ## flash         — compile, then upload to the board
 flash: build upload
 
 ## upload        — upload the last build without recompiling
 upload:
-	arduino-cli upload --fqbn $(FQBN) --port $(PORT) --input-dir $(BUILD) $(SKETCH)
+	$(ARDUINO) upload --fqbn $(FQBN) --port $(PORT) --input-dir $(BUILD) $(SKETCH)
 
 ## monitor       — open the serial monitor (Ctrl-C to exit)
 monitor:
-	arduino-cli monitor --port $(PORT) --config baudrate=$(BAUD)
+	$(ARDUINO) monitor --port $(PORT) --config baudrate=$(BAUD)
 
 ## flash-monitor — flash, then immediately open the serial monitor
 flash-monitor: flash monitor
 
 ## ports         — list connected boards / serial ports
 ports:
-	arduino-cli board list
+	$(ARDUINO) board list
 
 ## format        — auto-format all firmware sources in place
 format:

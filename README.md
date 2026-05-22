@@ -8,17 +8,16 @@ core and built/flashed entirely from the terminal.
 - [`arduino-cli`](https://arduino.github.io/arduino-cli/) — build, upload, monitor
 - ESP32 Arduino core `3.3.8` (`esp32:esp32`)
 - Editor: [Zed](https://zed.dev) — `.ino` files are treated as C++; clangd
-  reads `firmware/tamagotchi/build/compile_commands.json` for code intelligence
+  reads `firmware/build/compile_commands.json` for code intelligence
 
-One-time setup is already done. To reproduce on another machine:
+The `arduino-cli` config is committed to the repo (`firmware/arduino-cli.yaml`),
+so `make` and the editor both use it via `--config-file` — no global setup
+needed. To reproduce on another machine, install the tool and the ESP32 core:
 
 ```sh
 brew install arduino-cli
-arduino-cli config init
-arduino-cli config add board_manager.additional_urls \
-  https://espressif.github.io/arduino-esp32/package_esp32_index.json
-arduino-cli core update-index
-arduino-cli core install esp32:esp32
+arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
 ```
 
 ## Daily workflow
