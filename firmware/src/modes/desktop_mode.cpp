@@ -20,11 +20,13 @@ const uint32_t IDLE_TIMEOUT_MS = 30000;
 
 }  // namespace
 
-DesktopMode::DesktopMode(Transport& tx, Renderer& renderer) : tx_(tx), renderer_(renderer) {}
+DesktopMode::DesktopMode(Transport& tx, Renderer& renderer, Mood& mood)
+    : tx_(tx), renderer_(renderer), mood_(mood) {}
 
 void DesktopMode::onEnter(ViewManager& vm) {
+  // Keep whatever expression is showing (e.g. handed over from Free Mode);
+  // just make sure the face view is the active one.
   vm.setView(&vm.face());
-  vm.face().setExpression(ExpressionId::Neutral);
   lastCmdMs_ = millis();
 }
 
@@ -58,10 +60,17 @@ void DesktopMode::onCommand(const Command& cmd, ViewManager& vm) {
       vm.setView(&vm.text());
       tx_.println("OK");
       break;
-    case CmdType::SetMood:
-      // Phase 1: accepted and acked only. Free Mode will act on mood later.
-      tx_.println("OK");
+    case CmdType::SetMood: {
+      // Set the shared pet mood; Free Mode acts on it when it next runs.
+      Mood mood;
+      if (moodFromName(cmd.arg1, mood)) {
+        mood_ = mood;
+        tx_.println("OK");
+      } else {
+        tx_.println("ERR unknown mood");
+      }
       break;
+    }
     case CmdType::GetState:
       sendState_(vm);
       break;
