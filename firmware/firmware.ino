@@ -1,20 +1,32 @@
 // firmware.ino — ESP32-C3 SuperMini firmware
 //
-// Basic blink: toggles the onboard LED on and off once a second.
+// OLED smoke-test: shows "hello" centered on a 128x64 SSD1306 display.
 
-// The SuperMini's onboard blue LED is on GPIO8 and is ACTIVE-LOW:
-// drive the pin LOW to turn it on, HIGH to turn it off.
-constexpr uint8_t LED_PIN = 8;
+#include <U8g2lib.h>
 
-constexpr uint32_t BLINK_INTERVAL_MS = 1000;
+// SSD1306 0.96" 128x64 OLED, wired over I2C.
+// SuperMini GPIO5 -> SDA, GPIO6 -> SCL (3V3 + GND for power).
+constexpr uint8_t OLED_SDA = 5;
+constexpr uint8_t OLED_SCL = 6;
+
+// Software (bit-banged) I2C so the exact SDA/SCL pins above are honoured;
+// _F_ = full frame buffer, giving the clearBuffer()/sendBuffer() API.
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C oled(U8G2_R0, OLED_SCL, OLED_SDA,
+                                         U8X8_PIN_NONE);
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
+  oled.begin();
+
+  oled.clearBuffer();
+  oled.setFont(u8g2_font_ncenB14_tr);
+  oled.setFontPosCenter();
+
+  const char *msg = "hello";
+  int16_t x = (oled.getDisplayWidth() - oled.getStrWidth(msg)) / 2;
+  oled.drawStr(x, oled.getDisplayHeight() / 2, msg);
+
+  oled.sendBuffer();
 }
 
 void loop() {
-  digitalWrite(LED_PIN, LOW);  // LED on
-  delay(BLINK_INTERVAL_MS);
-  digitalWrite(LED_PIN, HIGH);  // LED off
-  delay(BLINK_INTERVAL_MS);
 }
