@@ -16,6 +16,14 @@ The pet has two modes and switches between them on its own:
 After ~60 s with no command, Desktop Mode drifts back to Free Mode. (To
 return to Free Mode immediately, just reboot — it boots into Free Mode.)
 
+## BOOT button
+
+The on-board **BOOT button** (GPIO9) cycles to the next expression on each
+tap, stepping through all 12 faces. A tap also hands control to Desktop
+Mode (so the choice sticks), so the pet drifts back to Free Mode ~60 s
+after the last tap. Don't *hold* the button while powering on — that puts
+the chip in flash-download mode.
+
 ## Serial command protocol
 
 One command per line, at **115200 baud**. Responses come back one per
@@ -79,7 +87,8 @@ stays quieter — a jingle plays only when the mood shifts. Non-blocking
 4. `SET mood playful` — `OK`; the mood is set for when Free Mode resumes.
 5. `GET state` / `GET fps` / `PING` — query responses.
 6. `SHOW face banana` — `ERR unknown face`.
-7. **Idle** — stop sending commands; after ~60 s it returns to Free Mode.
+7. **BOOT button** — tap it; the face steps to the next expression.
+8. **Idle** — stop sending commands; after ~60 s it returns to Free Mode.
 
 ## Source layout
 

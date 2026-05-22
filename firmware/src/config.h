@@ -18,7 +18,13 @@
 #define PIN_BTN_B 3
 #define PIN_BTN_C 4
 
-// --- Passive piezo buzzer (unused in Phase 1) --------------------------
+// --- On-board BOOT button (GPIO9) --------------------------------------
+// GPIO9 is the ESP32-C3 strapping pin: holding it LOW during power-up
+// enters flash-download mode. After boot it is just a normal input — used
+// here as a "next expression" button. Don't hold it while powering on.
+#define PIN_BTN_BOOT 9
+
+// --- Passive piezo buzzer ----------------------------------------------
 #define PIN_BUZZER 10
 
 // --- OLED panel --------------------------------------------------------

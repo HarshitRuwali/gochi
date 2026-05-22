@@ -45,12 +45,32 @@ static void setMode(Mode& mode) {
   currentMode->onEnter(viewManager);
 }
 
+// Debounced BOOT-button (GPIO9) press detector. Returns true once on each
+// release->press edge. Active-low: LOW means pressed.
+static bool bootButtonPressed(uint32_t now) {
+  static bool raw = false;
+  static bool stable = false;
+  static uint32_t changeMs = 0;
+  bool reading = digitalRead(PIN_BTN_BOOT) == LOW;
+  if (reading != raw) {
+    raw = reading;
+    changeMs = now;
+  }
+  if (now - changeMs >= 25 && reading != stable) {
+    stable = reading;
+    if (stable) return true;  // settled into "pressed"
+  }
+  return false;
+}
+
 void setup() {
   transport.begin(115200);
   renderer.init();
   buzzer::begin();
 
-  // Buttons are wired but unused — configured so the pins start known.
+  // The on-board BOOT button cycles expressions. The 3 external button
+  // pins are wired but unused — configured so they start in a known state.
+  pinMode(PIN_BTN_BOOT, INPUT_PULLUP);
   pinMode(PIN_BTN_A, INPUT_PULLUP);
   pinMode(PIN_BTN_B, INPUT_PULLUP);
   pinMode(PIN_BTN_C, INPUT_PULLUP);
@@ -67,7 +87,18 @@ void loop() {
     lastCmdMs = now;
     setMode(desktopMode);  // any command means a host is driving the pet
     currentMode->onCommand(cmd, viewManager);
-  } else if (currentMode == &desktopMode && now - lastCmdMs >= IDLE_TO_FREE_MS) {
+  }
+
+  // BOOT button: a tap cycles to the next expression (and, like a
+  // command, hands control to Desktop Mode).
+  if (bootButtonPressed(now)) {
+    lastCmdMs = now;
+    setMode(desktopMode);
+    uint8_t next = (static_cast<uint8_t>(viewManager.face().expression()) + 1) % expressionCount();
+    viewManager.face().setExpression(static_cast<ExpressionId>(next));
+  }
+
+  if (currentMode == &desktopMode && now - lastCmdMs >= IDLE_TO_FREE_MS) {
     setMode(freeMode);  // gone idle — let the pet live on its own
   }
 
