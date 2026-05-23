@@ -1,0 +1,23 @@
+{
+  "name": "tamagotchi",
+  "version": "0.1.0",
+  "description": "CLI + local HTTP server for the Tamagotchi desk pet.",
+  "type": "module",
+  "bin": {
+    "tamagotchi": "./bin/tamagotchi.js"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "server": "tsx src/cli.ts server run"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.4.3",
+    "@serialport/parser-readline": "^12.0.0",
+    "commander": "^12.1.0",
+    "serialport": "^12.0.0",
+    "tsx": "^4.22.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
