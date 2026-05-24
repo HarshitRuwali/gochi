@@ -404,25 +404,38 @@ void ProceduralFace::render(Renderer& r) {
       break;
     }
     case ExpressionId::Horny: {
+      // Heavy-lidded "bedroom" eyes (a round eye with its top erased to
+      // leave a flat-topped slit, finished with a thick eyelid line),
+      // paired with a tight, focused bite — upper teeth clamped onto a
+      // small lower lip with a clear notch where one tooth digs in.
       int bob = wave(t, 1100, 1);
-      int wig = wave(t, 320, 2);   // tongue wiggle
-      int lid = wave(t, 2600, 2);  // slow, sultry lid droop
+      int lid = wave(t, 2600, 2);    // slow, sultry lid droop
+      int flush = wave(t, 1900, 1);  // a flushed-cheek pulse
+      int squirm = wave(t, 1700, 1); // tiny side-to-side lip squirm
       int ey = EYE_CY + bob;
-      // Heavy-lidded "bedroom" eyes: a round eye with its top erased to
-      // leave a flat-topped slit, finished with a thick eyelid line.
-      roundEye(r, elx, ey, 20, 24, 8, eyeOpen_);
-      roundEye(r, erx, ey, 20, 24, 8, eyeOpen_);
-      int lidH = 11 + lid;
-      r.clearRect(elx - 11, ey - 13, 22, lidH);
-      r.clearRect(erx - 11, ey - 13, 22, lidH);
-      int ly = ey - 13 + lidH;
+      roundEye(r, elx, ey, 20, 22, 8, eyeOpen_);
+      roundEye(r, erx, ey, 20, 22, 8, eyeOpen_);
+      int lidH = 12 + lid;
+      r.clearRect(elx - 11, ey - 12, 22, lidH);
+      r.clearRect(erx - 11, ey - 12, 22, lidH);
+      int ly = ey - 12 + lidH;
       thickLine(r, elx - 9, ly, elx + 9, ly, 1);
       thickLine(r, erx - 9, ly, erx + 9, ly, 1);
-      // A smirk with a tongue lolling out and wiggling.
-      mouthCurve(r, mx, 43 + bob, 9, 3, 2);
-      openMouth(r, mx + wig, 50 + bob, 8, 9);
-      drawBlush(r, elx - 16, ey + 16);
-      drawBlush(r, erx + 7, ey + 16);
+
+      // --- Bite-lip mouth --------------------------------------------
+      int my = 47 + bob;
+      int lx = mx + squirm;
+      // Lower lip: a small, plump rounded bump.
+      r.fillRoundRect(lx - 7, my, 14, 6, 3);
+      // Upper teeth: a thin flat band pressed down on top of the lip.
+      r.fillRoundRect(mx - 8, my - 2, 16, 3, 1);
+      // The bite: a small notch where one tooth digs into the lip,
+      // sitting just off-center so the face reads as "biting one side".
+      r.clearRect(lx - 3, my - 1, 4, 3);
+
+      // Flushed, pulsing cheeks.
+      drawBlush(r, elx - 16, ey + 16 + flush);
+      drawBlush(r, erx + 7, ey + 16 + flush);
       break;
     }
     case ExpressionId::Shy: {
