@@ -47,6 +47,11 @@ tamagotchi mood                # opens a select with all 5 moods
 # text
 tamagotchi text hello there    # extra args are joined
 
+# image — auto-resized to 128x64, dithered to 1-bit
+tamagotchi image ./logo.png
+tamagotchi image ./photo.jpg --no-dither -t 96   # plain threshold
+tamagotchi image ./icon.png --invert --bg white  # invert + white letterbox
+
 # queries
 tamagotchi get state
 tamagotchi get fps
@@ -87,6 +92,7 @@ either way** — when offline, the response is
 | GET    | /health  | —               | (none)          |
 | POST   | /face    | `{"name":"..."}` | `SHOW face …`  |
 | POST   | /text    | `{"text":"..."}` | `SHOW text …`  |
+| POST   | /image   | `{"data":"<b64>"}` | `SHOW image …` (128×64 1bpp, MSB-first) |
 | POST   | /mood    | `{"name":"..."}` | `SET mood …`   |
 | GET    | /state   | —               | `GET state`     |
 | GET    | /fps     | —               | `GET fps`       |
@@ -120,6 +126,7 @@ cli/
   src/server.ts           HTTP API (node:http), owns the serial port
   src/service.ts          launchd install/start/stop/status
   src/client.ts           CLI's HTTP client
+  src/image.ts            PNG/JPG → 128×64 1bpp (dither + MSB-pack)
 ```
 
 ## Notes

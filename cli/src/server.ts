@@ -148,6 +148,24 @@ export async function runServer(): Promise<void> {
         }
         return sendCmd(res, `SHOW text ${text}`);
       }
+      if (method === "POST" && path === "/image") {
+        const body = await readJson(req);
+        const data = body?.data;
+        if (typeof data !== "string" || !data) {
+          return send(res, { ok: false, connected: device.isConnected(), message: "missing data" });
+        }
+        // The firmware's line buffer is 1536 bytes including the verb
+        // prefix; reject anything that can't fit so we don't silently
+        // truncate. 1368 chars is base64 for exactly 1024 raw bytes.
+        if (data.length > 1500) {
+          return send(res, {
+            ok: false,
+            connected: device.isConnected(),
+            message: `image payload too large: ${data.length} chars (max 1500)`,
+          });
+        }
+        return sendCmd(res, `SHOW image ${data}`);
+      }
       if (method === "POST" && path === "/mood") {
         const body = await readJson(req);
         const name = body?.name;

@@ -3,12 +3,14 @@
 #include "desktop_mode.h"
 
 #include <Arduino.h>
+#include <mbedtls/base64.h>
 #include <stdio.h>
 
 #include "../assets/expressions.h"
 #include "../command.h"
 #include "../renderer.h"
 #include "../transport.h"
+#include "../views/image_view.h"
 #include "../views/view_manager.h"
 
 namespace {
@@ -32,8 +34,8 @@ void DesktopMode::onEnter(ViewManager& vm) {
 
 void DesktopMode::update(uint32_t now, ViewManager& vm) {
   if (!IDLE_FALLBACK) return;
-  // Only the face view needs this: the text view already scrolls, so it
-  // never looks frozen.
+  // Only the face view needs this: the text view already scrolls and the
+  // image view is intentionally static, so neither looks "frozen".
   if (!vm.isFaceActive()) return;
   if (now - lastCmdMs_ >= IDLE_TIMEOUT_MS) {
     vm.face().blinkOnce();  // subtle "still alive" cue
@@ -60,6 +62,24 @@ void DesktopMode::onCommand(const Command& cmd, ViewManager& vm) {
       vm.setView(&vm.text());
       tx_.println("OK");
       break;
+    case CmdType::ShowImage: {
+      // Decode the base64 frame directly into a scratch buffer the size
+      // of one screen, then hand it to ImageView (which copies it into
+      // its own member buffer).
+      static uint8_t scratch[ImageView::BITMAP_BYTES];
+      size_t out = 0;
+      int rc = mbedtls_base64_decode(scratch, sizeof(scratch), &out,
+                                     reinterpret_cast<const unsigned char*>(cmd.payload),
+                                     cmd.payloadLen);
+      if (rc != 0 || out == 0) {
+        tx_.println("ERR bad image base64");
+        return;
+      }
+      vm.image().setBitmap(scratch, out);
+      vm.setView(&vm.image());
+      tx_.println("OK");
+      break;
+    }
     case CmdType::SetMood: {
       // Set the shared pet mood; Free Mode acts on it when it next runs.
       Mood mood;

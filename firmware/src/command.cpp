@@ -35,6 +35,8 @@ Command parseLine(const char* line) {
   cmd.type = CmdType::Unknown;
   cmd.arg1[0] = '\0';
   cmd.arg2 = -1;  // unused in Phase 1; reserved for Phase 2 numeric args
+  cmd.payload = nullptr;
+  cmd.payloadLen = 0;
   if (line == nullptr) return cmd;
 
   const char* p = line;
@@ -75,6 +77,13 @@ Command parseLine(const char* line) {
       cmd.type = CmdType::ShowText;
       // The text payload is the rest of the line, taken verbatim.
       copyArg(cmd.arg1, sizeof(cmd.arg1), p);
+    } else if (strcasecmp(what, "image") == 0) {
+      // The base64 bitmap is the rest of the line — too large to copy
+      // into arg1. Point at it in place; the caller (DesktopMode) decodes
+      // and copies it out before the buffer is reused.
+      cmd.type = CmdType::ShowImage;
+      cmd.payload = p;
+      cmd.payloadLen = strlen(p);
     }
   }
   return cmd;

@@ -35,6 +35,7 @@ curl -s http://localhost:7474/health
 tamagotchi health                  # server + device status
 tamagotchi face <name>             # switch face expression
 tamagotchi text "<message>"        # show scrolling text
+tamagotchi image <path>            # render a PNG/JPG on the OLED (128x64, 1-bit, dithered)
 tamagotchi mood <name>             # set mood
 tamagotchi get state               # current view + expression
 tamagotchi get fps                 # display frame rate
@@ -53,6 +54,7 @@ All responses are JSON and always HTTP 200, even when the device is offline. Che
 | GET    | /health  | —                     | Server + device status                        |
 | POST   | /face    | `{"name":"happy"}`    | Switch face expression                        |
 | POST   | /text    | `{"text":"hello"}`    | Scrolling text view (keep it short)           |
+| POST   | /image   | `{"data":"<base64>"}` | Push a 128×64 1bpp frame, MSB-first (1024 B)  |
 | POST   | /mood    | `{"name":"playful"}`  | Set mood (resets on device reboot)            |
 | GET    | /state   | —                     | Current view + expression                     |
 | GET    | /fps     | —                     | Display frame rate                            |

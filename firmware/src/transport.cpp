@@ -4,7 +4,14 @@
 
 #include <Arduino.h>
 
-void Transport::begin(unsigned long baud) { Serial.begin(baud); }
+void Transport::begin(unsigned long baud) {
+  // Default HWCDC RX FIFO on the C3 is only 256 bytes — small enough that
+  // a full-frame `SHOW image` payload (~1380 chars) overruns it before
+  // the loop can drain it between renders. Grow the FIFO to fit one full
+  // line with headroom.
+  Serial.setRxBufferSize(2048);
+  Serial.begin(baud);
+}
 
 bool Transport::poll(Command& out) {
   while (Serial.available() > 0) {

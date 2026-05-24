@@ -4,13 +4,14 @@
 #include <stdint.h>
 
 #include "face_view.h"
+#include "image_view.h"
 #include "text_view.h"
 
 class Renderer;
 
-// ViewManager owns the single FaceView and TextView and tracks which is
-// active. setView() drives the onExit/onEnter handoff; tick() advances and
-// draws the active view once per loop.
+// ViewManager owns the FaceView, TextView and ImageView and tracks which
+// is active. setView() drives the onExit/onEnter handoff; tick() advances
+// and draws the active view once per loop.
 class ViewManager {
  public:
   void setView(View* v);
@@ -18,15 +19,18 @@ class ViewManager {
 
   FaceView& face() { return face_; }
   TextView& text() { return text_; }
+  ImageView& image() { return image_; }
 
   bool isFaceActive() const { return active_ == &face_; }
   bool isTextActive() const { return active_ == &text_; }
+  bool isImageActive() const { return active_ == &image_; }
 
-  // "face", "text", or "none" — used by the GET state response.
+  // "face", "text", "image", or "none" — used by the GET state response.
   const char* activeViewName() const;
 
  private:
   FaceView face_;
   TextView text_;
+  ImageView image_;
   View* active_ = nullptr;
 };

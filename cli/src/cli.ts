@@ -4,6 +4,7 @@ import { select } from "@inquirer/prompts";
 import { Command } from "commander";
 
 import * as client from "./client";
+import { fileToFrameBase64 } from "./image";
 import { runServer } from "./server";
 import * as service from "./service";
 
@@ -47,6 +48,39 @@ program
   .description("show a line of text (long text scrolls)")
   .argument("<text...>", "the text to show")
   .action(async (parts: string[]) => print(await client.text(parts.join(" "))));
+
+program
+  .command("image")
+  .description("show a PNG/JPG on the OLED (auto-resized to 128x64, 1-bit)")
+  .argument("<path>", "path to a PNG or JPG file")
+  .option("--no-dither", "use a plain brightness threshold instead of Floyd–Steinberg")
+  .option("-t, --threshold <n>", "threshold cutoff 0..255 (only with --no-dither)", "128")
+  .option("--invert", "swap on/off pixels")
+  .option("--bg <color>", "letterbox fill: black|white", "black")
+  .action(async (path: string, opts: { dither: boolean; threshold: string; invert?: boolean; bg: string }) => {
+    const t = Number(opts.threshold);
+    if (!Number.isFinite(t) || t < 0 || t > 255) {
+      console.error("threshold must be a number 0..255");
+      process.exit(1);
+    }
+    if (opts.bg !== "black" && opts.bg !== "white") {
+      console.error("bg must be 'black' or 'white'");
+      process.exit(1);
+    }
+    let base64: string;
+    try {
+      base64 = await fileToFrameBase64(path, {
+        dither: opts.dither,
+        threshold: t,
+        invert: opts.invert,
+        background: opts.bg,
+      });
+    } catch (e: any) {
+      console.error(`could not read or decode "${path}": ${e?.message || e}`);
+      process.exit(1);
+    }
+    print(await client.image(base64));
+  });
 
 // --- Queries -----------------------------------------------------------
 

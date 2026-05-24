@@ -22,7 +22,9 @@ class Transport {
   void println(const char* s);
 
  private:
-  static const size_t kLineCap = 128;  // max line length, incl. NUL
+  // Sized to hold `SHOW image <base64>` for a full 128x64 1bpp bitmap:
+  // 1024 bytes encodes to 1368 chars + the 11-char verb prefix + NUL.
+  static const size_t kLineCap = 1536;
   char buf_[kLineCap];
   size_t len_ = 0;
   bool overflow_ = false;

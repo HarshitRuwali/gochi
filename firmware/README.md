@@ -34,6 +34,7 @@ case-insensitive. Receiving any command switches the pet to Desktop Mode.
 | -------------------- | -------------------------------------------- | -------------------------------- |
 | `SHOW face <name>`   | Switch to the face view, set the expression  | `OK` / `ERR unknown face`        |
 | `SHOW text <string>` | Switch to the text view (`<string>` = rest)  | `OK`                             |
+| `SHOW image <b64>`   | Push a 128×64 1bpp frame, MSB-first packed   | `OK` / `ERR bad image base64`    |
 | `SET mood <name>`    | Set the pet's mood (drives Free Mode)        | `OK` / `ERR unknown mood`        |
 | `GET state`          | Query the current view + expression          | `{"view":"face","expr":"happy"}` |
 | `GET fps`            | Query the current display frame rate         | `fps 38`                         |
@@ -63,6 +64,14 @@ It picks a fresh expression every ~10–17 s, and every ~45–90 s the mood
 may drift to a new one (a gentle random walk, with `content` as home).
 `SET mood` sets the mood; it keeps drifting afterward. `horny` and `dead`
 are kept out of the autonomous rotation — they are manual-only.
+
+## The image view
+
+`SHOW image <base64>` paints a host-supplied 128×64 1-bit bitmap on the
+OLED — 1024 bytes of pixels (16 bytes per row, MSB = leftmost pixel),
+base64-encoded. The bitmap stays on screen until the next view command.
+The CLI's `tamagotchi image <file>` does the resize / dither / pack /
+encode automatically.
 
 ## The face
 
@@ -101,7 +110,7 @@ src/transport.{h,cpp}        buffered serial line I/O
 src/renderer.{h,cpp}         frame-oriented drawing surface
 src/display/                 U8g2-backed SSD1306 driver (hardware I2C)
 src/buzzer/                  non-blocking piezo tone-sequence player
-src/views/                   View interface, FaceView, TextView, ViewManager
+src/views/                   View interface, FaceView, TextView, ImageView, ViewManager
 src/views/procedural_face.*  the procedural face — all 12 expressions
 src/modes/                   Mode interface, DesktopMode, FreeMode
 src/assets/expressions.*     expression id/name registry

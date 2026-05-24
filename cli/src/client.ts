@@ -37,6 +37,8 @@ export const health = () => call("GET", "/health");
 export const face = (name: string) => call("POST", "/face", { name });
 export const text = (s: string) => call("POST", "/text", { text: s });
 export const mood = (name: string) => call("POST", "/mood", { name });
+// `data` is a base64-encoded 128x64 1bpp bitmap (1024 bytes raw, MSB-first).
+export const image = (data: string) => call("POST", "/image", { data });
 export const state = () => call("GET", "/state");
 export const fps = () => call("GET", "/fps");
 export const faces = () => call("GET", "/faces");
