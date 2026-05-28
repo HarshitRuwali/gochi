@@ -27,6 +27,7 @@ class DesktopMode : public Mode {
  private:
   void sendState_(ViewManager& vm);
   void sendFaceList_();
+  void sendI2cScan_();
 
   Transport& tx_;
   Renderer& renderer_;

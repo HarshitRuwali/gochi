@@ -249,6 +249,14 @@ bool begin() {
 
 bool isReady() { return ready; }
 
+bool probe(uint8_t addr) {
+  busBringUp();
+  i2cStart();
+  bool ack = i2cWriteByte((addr << 1) | 0);
+  i2cStop();
+  return ack;
+}
+
 bool read(Sample& out) {
   if (!ready) return false;
 

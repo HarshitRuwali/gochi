@@ -80,6 +80,9 @@ gochi list faces
 gochi ping
 gochi health
 
+# enumerate every device on both I2C buses (handy when wiring a sensor)
+gochi i2c
+
 # interactive hardware self-test — picks a component from a menu,
 # asks y/n after each, drops troubleshooting tips on 'no'.
 gochi test               # menu: serial / OLED / buzzer / IMU / all

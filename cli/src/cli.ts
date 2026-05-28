@@ -133,6 +133,50 @@ list.command("faces").description("list all expression names")
 program.command("ping").description("liveness check (PONG)")
   .action(async () => print(await client.ping()));
 
+// Names for I2C addresses we know about — purely cosmetic, the firmware
+// just returns the addresses.
+const I2C_LABELS: Record<string, string> = {
+  "0x3C": "SSD1306 OLED",
+  "0x68": "MPU-6050 IMU",
+  "0x69": "MPU-6050 IMU (AD0 high)",
+};
+
+program
+  .command("i2c")
+  .description("scan both I2C buses and list every device that ACKs")
+  .action(async () => {
+    const result = await client.i2c();
+    if (!result.ok) {
+      print(result);
+      process.exit(1);
+    }
+    // The firmware replies with `{"A":[...],"B":[...]}` — but the
+    // daemon may pass it as a parsed object or as the raw string,
+    // depending on how it round-tripped through transport.
+    let parsed: { A?: string[]; B?: string[] };
+    try {
+      parsed = typeof result.response === "string" ? JSON.parse(result.response) : (result.response as any);
+    } catch {
+      print(result);
+      return;
+    }
+    const buses: Array<[string, string, string[]]> = [
+      ["A", "hardware I2C, GPIO5/6", parsed.A ?? []],
+      ["B", "software I2C, GPIO7/8", parsed.B ?? []],
+    ];
+    for (const [label, where, addrs] of buses) {
+      console.log(`Bus ${label} (${where}):`);
+      if (addrs.length === 0) {
+        console.log("  (no devices)");
+      } else {
+        for (const addr of addrs) {
+          const name = I2C_LABELS[addr];
+          console.log(`  ${addr}${name ? `  ${name}` : ""}`);
+        }
+      }
+    }
+  });
+
 // --- Self-test ---------------------------------------------------------
 
 program

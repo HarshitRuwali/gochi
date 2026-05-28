@@ -3,11 +3,13 @@
 #include "desktop_mode.h"
 
 #include <Arduino.h>
+#include <Wire.h>
 #include <mbedtls/base64.h>
 #include <stdio.h>
 
 #include "../assets/expressions.h"
 #include "../command.h"
+#include "../imu/mpu6050.h"
 #include "../renderer.h"
 #include "../transport.h"
 #include "../views/image_view.h"
@@ -106,6 +108,9 @@ void DesktopMode::onCommand(const Command& cmd, ViewManager& vm) {
     case CmdType::Ping:
       tx_.println("PONG");
       break;
+    case CmdType::ScanI2c:
+      sendI2cScan_();
+      break;
     case CmdType::Unknown:
     default:
       tx_.println("ERR unknown command");
@@ -117,6 +122,31 @@ void DesktopMode::sendState_(ViewManager& vm) {
   char buf[96];
   snprintf(buf, sizeof(buf), "{\"view\":\"%s\",\"expr\":\"%s\"}", vm.activeViewName(),
            expressionName(vm.face().expression()));
+  tx_.println(buf);
+}
+
+void DesktopMode::sendI2cScan_() {
+  // Scan both I2C buses and emit a single JSON line. Bus A is the
+  // hardware I2C (Wire, GPIO5/6) — the OLED. Bus B is the bit-banged
+  // bus the MPU lives on (GPIO7/8). Standard 7-bit range is 0x08..0x77.
+  char buf[160];
+  size_t n = 0;
+  n += snprintf(buf + n, sizeof(buf) - n, "{\"A\":[");
+  bool first = true;
+  for (uint8_t addr = 0x08; addr < 0x78; ++addr) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() != 0) continue;
+    n += snprintf(buf + n, sizeof(buf) - n, "%s\"0x%02X\"", first ? "" : ",", addr);
+    first = false;
+  }
+  n += snprintf(buf + n, sizeof(buf) - n, "],\"B\":[");
+  first = true;
+  for (uint8_t addr = 0x08; addr < 0x78; ++addr) {
+    if (!imu::probe(addr)) continue;
+    n += snprintf(buf + n, sizeof(buf) - n, "%s\"0x%02X\"", first ? "" : ",", addr);
+    first = false;
+  }
+  snprintf(buf + n, sizeof(buf) - n, "]}");
   tx_.println(buf);
 }
 

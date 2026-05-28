@@ -128,5 +128,6 @@ export const state = () => call("GET", "/state");
 export const fps = () => call("GET", "/fps");
 export const faces = () => call("GET", "/faces");
 export const ping = () => call("POST", "/ping");
+export const i2c = () => call("GET", "/i2c");
 export const stop = () => call("POST", "/stop");
 export const start = () => call("POST", "/start");

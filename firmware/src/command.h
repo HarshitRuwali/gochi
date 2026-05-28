@@ -12,6 +12,8 @@
 //   GET fps               query the current display frame rate
 //   LIST faces            list all expression names
 //   PING                  liveness check
+//   SCAN i2c              enumerate devices on both I2C buses; replies
+//                         {"A":["0x3C"],"B":["0x68"]}
 #pragma once
 
 #include <stddef.h>
@@ -25,6 +27,7 @@ enum class CmdType {
   GetFps,
   ListFaces,
   Ping,
+  ScanI2c,
   Unknown,
 };
 

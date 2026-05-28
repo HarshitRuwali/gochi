@@ -45,6 +45,10 @@ Command parseLine(const char* line) {
 
   if (strcasecmp(verb, "PING") == 0) {
     cmd.type = CmdType::Ping;
+  } else if (strcasecmp(verb, "SCAN") == 0) {
+    char what[8];
+    nextToken(&p, what, sizeof(what));
+    if (strcasecmp(what, "i2c") == 0) cmd.type = CmdType::ScanI2c;
   } else if (strcasecmp(verb, "GET") == 0) {
     char what[8];
     nextToken(&p, what, sizeof(what));

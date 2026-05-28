@@ -32,6 +32,13 @@ struct Sample {
 // repeatedly — re-init on each call is idempotent.
 bool begin();
 
+// Probe an arbitrary 7-bit address on the MPU's bit-banged I2C bus.
+// Returns true if a device ACKed. Used by the `SCAN i2c` command to
+// enumerate the MPU bus the same way Wire enumerates the OLED bus.
+// Safe to call without begin() succeeding — the bit-bang doesn't need
+// the MPU itself to be alive.
+bool probe(uint8_t addr);
+
 // Did begin() succeed at least once? If false, read() returns junk.
 bool isReady();
 

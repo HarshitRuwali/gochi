@@ -40,6 +40,7 @@ case-insensitive. Receiving any command switches the pet to Desktop Mode.
 | `GET fps`            | Query the current display frame rate         | `fps 38`                         |
 | `LIST faces`         | List all expression names                    | `neutral,happy,sad,...`          |
 | `PING`               | Liveness check                               | `PONG`                           |
+| `SCAN i2c`           | Enumerate every device on both I2C buses     | `{"A":["0x3C"],"B":["0x68"]}`    |
 
 Anything unrecognized returns `ERR unknown command`.
 
