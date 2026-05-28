@@ -278,6 +278,6 @@ export async function runDaemon(): Promise<void> {
         chmodSync(DAEMON_SOCKET, 0o600);
       } catch {}
     }
-    log(`Tamagotchi daemon listening on ${DAEMON_SOCKET}`);
+    log(`gochi daemon listening on ${DAEMON_SOCKET}`);
   });
 }

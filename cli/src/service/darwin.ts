@@ -129,7 +129,7 @@ export function setup(): void {
   const paths = resolveExecutionPaths();
   installDaemon(paths);
   installHttp(paths);
-  console.log("Tamagotchi installed and running:");
+  console.log("gochi installed and running:");
   console.log(`  daemon:        ${DAEMON_PLIST}`);
   console.log(`  HTTP frontend: ${HTTP_PLIST}  (http://localhost:${SERVER_PORT})`);
   console.log("");

@@ -118,7 +118,7 @@ export function setup(): void {
     DAEMON_UNIT,
     DAEMON_UNIT_PATH,
     unitFor(
-      "Tamagotchi daemon (owns USB serial)",
+      "gochi daemon (owns USB serial)",
       [paths.nodePath, paths.tsxPath, paths.cliEntry, "daemon", "run"],
     ),
   );
@@ -126,11 +126,11 @@ export function setup(): void {
     HTTP_UNIT,
     HTTP_UNIT_PATH,
     unitFor(
-      "Tamagotchi HTTP frontend",
+      "gochi HTTP frontend",
       [paths.nodePath, paths.tsxPath, paths.cliEntry, "server", "run"],
     ),
   );
-  console.log("Tamagotchi installed and running:");
+  console.log("gochi installed and running:");
   console.log(`  daemon:        ${DAEMON_UNIT_PATH}`);
   console.log(`  HTTP frontend: ${HTTP_UNIT_PATH}  (http://localhost:${SERVER_PORT})`);
   console.log("");
@@ -152,7 +152,7 @@ export function enableHttp(): void {
     HTTP_UNIT,
     HTTP_UNIT_PATH,
     unitFor(
-      "Tamagotchi HTTP frontend",
+      "gochi HTTP frontend",
       [paths.nodePath, paths.tsxPath, paths.cliEntry, "server", "run"],
     ),
   );

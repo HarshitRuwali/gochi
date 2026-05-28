@@ -63,6 +63,6 @@ export async function runServer(): Promise<void> {
   });
 
   proxy.listen(SERVER_PORT, () => {
-    log(`Tamagotchi HTTP frontend on http://localhost:${SERVER_PORT} → ${DAEMON_SOCKET}`);
+    log(`gochi HTTP frontend on http://localhost:${SERVER_PORT} → ${DAEMON_SOCKET}`);
   });
 }

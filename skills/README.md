@@ -5,7 +5,7 @@ This folder ships an [agentskills.io](https://agentskills.io/)-compliant `SKILL.
 - Source: [`skills/tamagotchi/SKILL.md`](https://github.com/prathamVaidya/tamagotchi/blob/main/skills/tamagotchi/SKILL.md)
 - Triggers on explicit commands ("tamagotchi face happy", "set mood playful", "show text on the tamagotchi") and optionally on task outcomes (build pass → happy, fail → sad, long wait → sleepy).
 
-Install the [`tamagotchi` CLI](../cli) first so the skill has something to talk to. The skill itself follows the open `SKILL.md` spec — a single markdown file with YAML frontmatter — so it works in every agent that implements the standard.
+Install the [`gochi` CLI](../cli) first so the skill has something to talk to. The skill itself follows the open `SKILL.md` spec — a single markdown file with YAML frontmatter — so it works in every agent that implements the standard.
 
 ## Quick install (recommended)
 
@@ -66,15 +66,15 @@ After install, the skill is `user_invocable`, so most agents expose it as `/tama
 End-to-end smoke test:
 
 ```sh
-tamagotchi health             # server + device status, should print connected:true
-tamagotchi face happy         # device should show the happy face
-tamagotchi face neutral       # reset
+gochi health             # server + device status, should print connected:true
+gochi face happy         # device should show the happy face
+gochi face neutral       # reset
 ```
 
 ## Troubleshooting
 
 - **Agent can't find the skill.** Make sure `SKILL.md` is all caps and lives in a folder named `tamagotchi`. Some runtimes are strict about both. Re-run `npx skills list` to see what got installed where.
-- **Skill loads but commands fail.** Run `tamagotchi health` yourself — the CLI server probably isn't running. Start it with `tamagotchi server start` (or `tamagotchi server install` the first time).
+- **Skill loads but commands fail.** Run `gochi health` yourself — the daemon probably isn't running. Install it with `gochi setup` (one-time, auto-starts at login on macOS / Linux / Windows).
 - **Server is up but `connected: false`.** Plug the device in. The server reconnects automatically; no restart needed.
 
 ## Related

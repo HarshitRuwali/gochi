@@ -54,7 +54,7 @@ function taskXml(command: string, args: string[]): string {
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Author>tamagotchi</Author>
-    <Description>Tamagotchi background service.</Description>
+    <Description>gochi background service.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -155,7 +155,7 @@ export function setup(): void {
   const paths = resolveExecutionPaths();
   installTask(DAEMON_TASK, [paths.nodePath, paths.tsxPath, paths.cliEntry, "daemon", "run"]);
   installTask(HTTP_TASK, [paths.nodePath, paths.tsxPath, paths.cliEntry, "server", "run"]);
-  console.log("Tamagotchi installed and running:");
+  console.log("gochi installed and running:");
   console.log(`  daemon task:        ${DAEMON_TASK}`);
   console.log(`  HTTP frontend task: ${HTTP_TASK}  (http://localhost:${SERVER_PORT})`);
   console.log("");
