@@ -174,6 +174,19 @@ export function enableHttp(): void {
   console.log(`HTTP frontend enabled at http://localhost:${SERVER_PORT}.`);
 }
 
+export function killDaemon(): void {
+  if (!taskExists(DAEMON_TASK)) {
+    console.error("daemon isn't installed yet. Run `gochi setup` first.");
+    process.exit(1);
+  }
+  // schtasks has no single 'restart' verb — End stops the running
+  // process, Run kicks off a fresh instance which picks up any source
+  // changes that landed since the previous start.
+  schtasks(["/End", "/TN", DAEMON_TASK]);
+  schtasks(["/Run", "/TN", DAEMON_TASK], { check: true });
+  console.log("daemon restarted with the current code.");
+}
+
 export function disableHttp(): void {
   if (!taskExists(HTTP_TASK)) {
     console.log("HTTP frontend is already disabled.");

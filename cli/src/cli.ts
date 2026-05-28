@@ -59,6 +59,15 @@ program
   .description("reacquire the serial port after a `stop`")
   .action(async () => print(await client.start()));
 
+// `kill` terminates the running daemon. The launchd / systemd / Task
+// Scheduler unit auto-respawns it, which is the whole point: the new
+// process picks up any source changes (added endpoints, daemon-side
+// bug fixes) without having to rewrite the service unit.
+program
+  .command("kill")
+  .description("kill the daemon (launchd/systemd auto-respawns it with the current code)")
+  .action(() => service.killDaemon());
+
 // --- Pet commands ------------------------------------------------------
 
 program

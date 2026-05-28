@@ -148,6 +148,25 @@ export function enableHttp(): void {
   console.log(`HTTP frontend enabled at http://localhost:${SERVER_PORT}.`);
 }
 
+export function killDaemon(): void {
+  if (!existsSync(DAEMON_PLIST)) {
+    console.error("daemon isn't installed yet. Run `gochi setup` first.");
+    process.exit(1);
+  }
+  // kickstart -k sends SIGTERM to the running process. Because the plist
+  // has KeepAlive=true, launchd respawns it immediately — which is the
+  // whole point: it picks up any source changes (daemon.ts / handlers)
+  // without us having to rewrite the plist.
+  const target = `gui/${uid()}/${DAEMON_LABEL}`;
+  const r = spawnSync("launchctl", ["kickstart", "-k", target], { encoding: "utf8" });
+  if (r.status !== 0) {
+    // kickstart is 10.10+; fall back to a full bootout+bootstrap which
+    // achieves the same end state on older / weirder systems.
+    bootstrap(DAEMON_LABEL, DAEMON_PLIST);
+  }
+  console.log("daemon killed; launchd is respawning it with the current code.");
+}
+
 export function disableHttp(): void {
   if (!existsSync(HTTP_PLIST)) {
     console.log("HTTP frontend is already disabled.");

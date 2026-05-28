@@ -126,6 +126,20 @@ gochi start           # daemon reconnects on the next ~1.5s tick
 The firmware Makefile wraps `make flash` with this automatically, so
 you don't normally type these by hand.
 
+### Picking up daemon code changes
+
+The daemon is long-lived — it only restarts at login. If you edit
+`daemon.ts` (or any module it imports), the running process keeps
+serving the old code. `gochi kill` terminates it and lets the platform
+service unit auto-respawn a fresh instance:
+
+```sh
+gochi kill            # SIGTERM the daemon; launchd/systemd brings it back
+```
+
+You'll see `daemon killed; launchd is respawning it…` and within a
+second the new process is serving any newly-added endpoints.
+
 ## HTTP frontend (optional)
 
 Enabled by default after `setup`. Turn it off if you don't need a TCP

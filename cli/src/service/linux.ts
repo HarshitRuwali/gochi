@@ -159,6 +159,18 @@ export function enableHttp(): void {
   console.log(`HTTP frontend enabled at http://localhost:${SERVER_PORT}.`);
 }
 
+export function killDaemon(): void {
+  if (!existsSync(DAEMON_UNIT_PATH)) {
+    console.error("daemon isn't installed yet. Run `gochi setup` first.");
+    process.exit(1);
+  }
+  // systemd's `restart` stops the unit (SIGTERM) and starts it again,
+  // which is effectively kill-and-respawn with KeepAlive — picks up
+  // source changes without rewriting the unit file.
+  systemctl(["restart", DAEMON_UNIT], { check: true });
+  console.log("daemon restarted with the current code.");
+}
+
 export function disableHttp(): void {
   if (!existsSync(HTTP_UNIT_PATH)) {
     console.log("HTTP frontend is already disabled.");

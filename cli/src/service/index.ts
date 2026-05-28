@@ -14,6 +14,7 @@ type ServiceBackend = {
   disableHttp(): void | Promise<void>;
   daemonStatus(): Promise<void>;
   serverStatus(): Promise<void>;
+  killDaemon(): void | Promise<void>;
 };
 
 function backend(): ServiceBackend {
@@ -38,3 +39,4 @@ export const enableHttp = (): void | Promise<void> => backend().enableHttp();
 export const disableHttp = (): void | Promise<void> => backend().disableHttp();
 export const daemonStatus = (): Promise<void> => backend().daemonStatus();
 export const serverStatus = (): Promise<void> => backend().serverStatus();
+export const killDaemon = (): void | Promise<void> => backend().killDaemon();
