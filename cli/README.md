@@ -33,7 +33,7 @@ for a missing device. The `connected` flag in the body signals state.
 ## Install
 
 ```sh
-npm i -g gochi
+npm i -g @0xpv/gochi
 gochi setup           # one-time: installs daemon + HTTP frontend
 ```
 

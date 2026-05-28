@@ -1,5 +1,5 @@
 {
-  "name": "gochi",
+  "name": "@0xpv/gochi",
   "version": "0.1.0",
   "description": "CLI + local HTTP server for the Tamagotchi desk pet.",
   "type": "module",
@@ -30,6 +30,9 @@
   "homepage": "https://github.com/devfolioco/gochi#readme",
   "bugs": {
     "url": "https://github.com/devfolioco/gochi/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "start": "tsx src/cli.ts",
