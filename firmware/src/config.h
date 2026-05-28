@@ -33,3 +33,27 @@
 #define OLED_ADDR 0x3C
 #define OLED_W 128
 #define OLED_H 64
+
+// --- MPU-6050 IMU (3-axis accel + gyro, on its OWN I2C bus -------------
+// We originally shared the OLED I2C bus (GPIO5/6) but with both devices'
+// pull-ups in parallel the bus rise time blew past the 400 kHz fast-mode
+// budget — address bytes got corrupted and the two devices alternated
+// ACKs at random. Putting the MPU on the C3's second I2C peripheral
+// (Wire1) with its own pins isolates the two completely.
+//
+// The C3 has only ONE hardware I2C controller (Wire), already used by
+// the OLED — so the MPU bus is software bit-banged on two ordinary
+// GPIOs. The MPU module's on-board pull-ups (to its VCC) hold the lines
+// HIGH; we drive LOW by switching pinMode to OUTPUT+LOW and "release"
+// by switching back to INPUT (lets the pull-up float the line HIGH).
+//
+// GPIO7 is unrestricted. GPIO8 is a strapping pin — must idle HIGH at
+// boot, which the MPU's pull-up handles, so plug the MPU in *before*
+// powering the board. If GPIO8 floats LOW at reset the chip enters
+// flash-download mode and no firmware runs.
+#define PIN_MPU_SDA 7
+#define PIN_MPU_SCL 8
+
+// AD0 floating / tied LOW → 0x68; AD0 tied HIGH → 0x69. Most GY-521-style
+// breakouts default to 0x68 — flip this if your module pulls AD0 high.
+#define MPU_ADDR 0x68
