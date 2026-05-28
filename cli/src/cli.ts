@@ -14,6 +14,10 @@
 //   gochi daemon run             foreground daemon process
 //   gochi server run             foreground HTTP frontend process
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import packageJson from "../package.json";
 import { select } from "@inquirer/prompts";
 import { Command } from "commander";
 
@@ -24,12 +28,33 @@ import { runServer } from "./server";
 import * as service from "./service";
 import { runTest } from "./test";
 
-const VERSION = "0.1.0";
+// Single source of truth: pull the version straight out of package.json so
+// bumping that field is the only thing required for `gochi --version` to
+// reflect a release. Read at startup, not import-time JSON-import — that
+// would require Node 20+ import assertions; this works on Node 18.
+const VERSION: string = (() => {
+  const pkgPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "package.json",
+  );
+  return JSON.parse(readFileSync(pkgPath, "utf8")).version;
+})();
 
 // Kept in sync with the firmware's expression / mood registries.
 const FACES = [
-  "neutral", "happy", "sad", "sleepy", "excited", "surprised",
-  "angry",   "blink", "love", "horny",  "shy",     "dead",
+  "neutral",
+  "happy",
+  "sad",
+  "sleepy",
+  "excited",
+  "surprised",
+  "angry",
+  "blink",
+  "love",
+  "horny",
+  "shy",
+  "dead",
 ];
 const MOODS = ["content", "playful", "grumpy", "sleepy", "affectionate"];
 
@@ -43,7 +68,9 @@ program
 
 program
   .command("setup")
-  .description("install the daemon (and HTTP frontend) so the pet is always reachable")
+  .description(
+    "install the daemon (and HTTP frontend) so the pet is always reachable",
+  )
   .action(() => service.setup());
 
 // stop / start release and reacquire the serial port. The daemon keeps
@@ -65,7 +92,9 @@ program
 // bug fixes) without having to rewrite the service unit.
 program
   .command("kill")
-  .description("kill the daemon (launchd/systemd auto-respawns it with the current code)")
+  .description(
+    "kill the daemon (launchd/systemd auto-respawns it with the current code)",
+  )
   .action(() => service.killDaemon());
 
 // --- Pet commands ------------------------------------------------------
@@ -98,48 +127,73 @@ program
   .command("image")
   .description("show a PNG/JPG on the OLED (auto-resized to 128x64, 1-bit)")
   .argument("<path>", "path to a PNG or JPG file")
-  .option("--no-dither", "use a plain brightness threshold instead of Floyd–Steinberg")
-  .option("-t, --threshold <n>", "threshold cutoff 0..255 (only with --no-dither)", "128")
+  .option(
+    "--no-dither",
+    "use a plain brightness threshold instead of Floyd–Steinberg",
+  )
+  .option(
+    "-t, --threshold <n>",
+    "threshold cutoff 0..255 (only with --no-dither)",
+    "128",
+  )
   .option("--invert", "swap on/off pixels")
   .option("--bg <color>", "letterbox fill: black|white", "black")
-  .action(async (path: string, opts: { dither: boolean; threshold: string; invert?: boolean; bg: string }) => {
-    const t = Number(opts.threshold);
-    if (!Number.isFinite(t) || t < 0 || t > 255) {
-      console.error("threshold must be a number 0..255");
-      process.exit(1);
-    }
-    if (opts.bg !== "black" && opts.bg !== "white") {
-      console.error("bg must be 'black' or 'white'");
-      process.exit(1);
-    }
-    let base64: string;
-    try {
-      base64 = await fileToFrameBase64(path, {
-        dither: opts.dither,
-        threshold: t,
-        invert: opts.invert,
-        background: opts.bg,
-      });
-    } catch (e: any) {
-      console.error(`could not read or decode "${path}": ${e?.message || e}`);
-      process.exit(1);
-    }
-    print(await client.image(base64));
-  });
+  .action(
+    async (
+      path: string,
+      opts: {
+        dither: boolean;
+        threshold: string;
+        invert?: boolean;
+        bg: string;
+      },
+    ) => {
+      const t = Number(opts.threshold);
+      if (!Number.isFinite(t) || t < 0 || t > 255) {
+        console.error("threshold must be a number 0..255");
+        process.exit(1);
+      }
+      if (opts.bg !== "black" && opts.bg !== "white") {
+        console.error("bg must be 'black' or 'white'");
+        process.exit(1);
+      }
+      let base64: string;
+      try {
+        base64 = await fileToFrameBase64(path, {
+          dither: opts.dither,
+          threshold: t,
+          invert: opts.invert,
+          background: opts.bg,
+        });
+      } catch (e: any) {
+        console.error(`could not read or decode "${path}": ${e?.message || e}`);
+        process.exit(1);
+      }
+      print(await client.image(base64));
+    },
+  );
 
 // --- Queries -----------------------------------------------------------
 
 const get = program.command("get");
-get.command("state").description("current view + expression")
+get
+  .command("state")
+  .description("current view + expression")
   .action(async () => print(await client.state()));
-get.command("fps").description("current display frame rate")
+get
+  .command("fps")
+  .description("current display frame rate")
   .action(async () => print(await client.fps()));
 
 const list = program.command("list");
-list.command("faces").description("list all expression names")
+list
+  .command("faces")
+  .description("list all expression names")
   .action(async () => print(await client.faces()));
 
-program.command("ping").description("liveness check (PONG)")
+program
+  .command("ping")
+  .description("liveness check (PONG)")
   .action(async () => print(await client.ping()));
 
 // Names for I2C addresses we know about — purely cosmetic, the firmware
@@ -164,7 +218,10 @@ program
     // depending on how it round-tripped through transport.
     let parsed: { A?: string[]; B?: string[] };
     try {
-      parsed = typeof result.response === "string" ? JSON.parse(result.response) : (result.response as any);
+      parsed =
+        typeof result.response === "string"
+          ? JSON.parse(result.response)
+          : (result.response as any);
     } catch {
       print(result);
       return;
@@ -191,37 +248,52 @@ program
 program
   .command("test")
   .description("interactive hardware self-test (asks y/n per component)")
-  .argument("[component]", "serial | oled | buzzer | imu | all (omit to pick from a menu)")
+  .argument(
+    "[component]",
+    "serial | oled | buzzer | imu | all (omit to pick from a menu)",
+  )
   .action(async (component?: string) => {
     await runTest(component);
   });
 
-program.command("health").description("daemon + device status")
+program
+  .command("health")
+  .description("daemon + device status")
   .action(async () => print(await client.health()));
 
 // --- Daemon management -------------------------------------------------
 
-const daemon = program.command("daemon").description("manage the long-lived port-owning daemon");
-daemon.command("run")
+const daemon = program
+  .command("daemon")
+  .description("manage the long-lived port-owning daemon");
+daemon
+  .command("run")
   .description("run the daemon in the foreground (used by launchd)")
   .action(() => runDaemon());
-daemon.command("status")
+daemon
+  .command("status")
   .description("show daemon launchd + socket status")
   .action(() => service.daemonStatus());
 
 // --- HTTP frontend management -----------------------------------------
 
-const server = program.command("server").description("manage the optional HTTP frontend");
-server.command("enable")
+const server = program
+  .command("server")
+  .description("manage the optional HTTP frontend");
+server
+  .command("enable")
   .description("turn on the TCP HTTP listener (auto-started at login)")
   .action(() => service.enableHttp());
-server.command("disable")
+server
+  .command("disable")
   .description("turn off the TCP HTTP listener")
   .action(() => service.disableHttp());
-server.command("status")
+server
+  .command("status")
   .description("show HTTP frontend status")
   .action(() => service.serverStatus());
-server.command("run")
+server
+  .command("run")
   .description("run the HTTP frontend in the foreground (used by launchd)")
   .action(() => runServer());
 
