@@ -14,13 +14,10 @@
 //   gochi daemon run             foreground daemon process
 //   gochi server run             foreground HTTP frontend process
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import packageJson from "../package.json";
 import { select } from "@inquirer/prompts";
 import { Command } from "commander";
 
+import packageJson from "../package.json";
 import * as client from "./client";
 import { runDaemon } from "./daemon";
 import { fileToFrameBase64 } from "./image";
@@ -28,18 +25,7 @@ import { runServer } from "./server";
 import * as service from "./service";
 import { runTest } from "./test";
 
-// Single source of truth: pull the version straight out of package.json so
-// bumping that field is the only thing required for `gochi --version` to
-// reflect a release. Read at startup, not import-time JSON-import — that
-// would require Node 20+ import assertions; this works on Node 18.
-const VERSION: string = (() => {
-  const pkgPath = join(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "package.json",
-  );
-  return JSON.parse(readFileSync(pkgPath, "utf8")).version;
-})();
+const VERSION: string = packageJson.version;
 
 // Kept in sync with the firmware's expression / mood registries.
 const FACES = [
