@@ -32,15 +32,15 @@ below will work without it.
 
 ## Bill of materials
 
-| # | Part | Notes |
-|---|------|-------|
-| 1 | ESP32-C3 SuperMini board | Native USB-C, RISC-V |
-| 1 | SSD1306 OLED, 0.96", 128×64, I²C, 4-pin | Address `0x3C` |
-| 1 | GY-521 / MPU-6050 IMU module, 8-pin | Address `0x68` |
-| 1 | Passive piezo buzzer | **Passive**, not active — active buzzers ignore tone signals |
-| 1 | Half-size (or larger) solderless breadboard | 400 tie-points is plenty |
-| ~14 | Male-to-male dupont jumper wires | Short jumpers (5–10 cm) keep I²C edges clean |
-| 1 | USB-C cable | Data, not power-only |
+| #   | Part                                        | Notes                                                        |
+| --- | ------------------------------------------- | ------------------------------------------------------------ |
+| 1   | ESP32-C3 SuperMini board                    | Native USB-C, RISC-V                                         |
+| 1   | SSD1306 OLED, 0.96", 128×64, I²C, 4-pin     | Address `0x3C`                                               |
+| 1   | GY-521 / MPU-6050 IMU module, 8-pin         | Address `0x68`                                               |
+| 1   | Passive piezo buzzer                        | **Passive**, not active — active buzzers ignore tone signals |
+| 1   | Half-size (or larger) solderless breadboard | 400 tie-points is plenty                                     |
+| ~14 | Male-to-male dupont jumper wires            | Short jumpers (5–10 cm) keep I²C edges clean                 |
+| 1   | USB-C cable                                 | Data, not power-only                                         |
 
 If you happen to have a different size buzzer or a 5-pin OLED with a
 RST pin: the RST line is left unconnected on this build.
@@ -50,15 +50,15 @@ RST pin: the RST line is left unconnected on this build.
 The full final wiring — useful as a reference, but don't try to do it
 all at once.
 
-| ESP32-C3 pin | Goes to | Notes |
-|--------------|---------|-------|
-| `3V3` | breadboard `+` rail | Powers OLED and MPU |
-| `GND` | breadboard `−` rail | Common ground |
-| `GPIO5` | OLED `SDA` | Hardware I²C bus A |
-| `GPIO6` | OLED `SCL` | Hardware I²C bus A |
-| `GPIO7` | MPU `SDA` | Software I²C bus B |
-| `GPIO8` | MPU `SCL` | ⚠️ strapping pin — see step 4 |
-| `GPIO10` | Buzzer signal | Buzzer GND → breadboard `−` rail |
+| ESP32-C3 pin | Goes to             | Notes                            |
+| ------------ | ------------------- | -------------------------------- |
+| `3V3`        | breadboard `+` rail | Powers OLED and MPU              |
+| `GND`        | breadboard `−` rail | Common ground                    |
+| `GPIO5`      | OLED `SDA`          | Hardware I²C bus A               |
+| `GPIO6`      | OLED `SCL`          | Hardware I²C bus A               |
+| `GPIO7`      | MPU `SDA`           | Software I²C bus B               |
+| `GPIO8`      | MPU `SCL`           | ⚠️ strapping pin — see step 4    |
+| `GPIO10`     | Buzzer signal       | Buzzer GND → breadboard `−` rail |
 
 > **Why two separate I²C buses?** The C3 has only one hardware I²C
 > controller, and stacking OLED + MPU on the same bus made the parallel
@@ -192,12 +192,12 @@ gochi test buzzer
 ```
 
 The CLI sends two `face` commands back-to-back to force a transition
-(the firmware only jingles on a *change*), so you'll hear a short
+(the firmware only jingles on a _change_), so you'll hear a short
 musical phrase. Then it asks "Did you hear a tone?".
 
 If you hear nothing:
 
-- Confirm it's a *passive* piezo. Active buzzers ignore tone signals
+- Confirm it's a _passive_ piezo. Active buzzers ignore tone signals
   and only beep at their own fixed pitch when fed DC; they will not
   reproduce the firmware's jingles.
 - Try swapping the two leads (some modules are polarity-sensitive).
@@ -330,16 +330,16 @@ the hardware.
 
 ## Troubleshooting cheat sheet
 
-| Symptom | First thing to check |
-|---------|----------------------|
-| `gochi ping` doesn't return `PONG` | USB cable (data, not power); `gochi daemon status` |
-| OLED is dark but `gochi i2c` shows `0x3C` | Panel is dead — try a different OLED |
-| OLED + `0x3C` both missing | SDA/SCL swapped; VCC on wrong rail |
-| Buzzer is silent during `gochi test buzzer` | It's an active buzzer, not passive |
-| MPU `0x68` missing on Bus B | SDA/SCL swapped on MPU side, or AD0 pulled HIGH (try `0x69`) |
-| MPU `0x68` shows up but gestures don't fire | Lift more briskly (>1.25 g for 250 ms); shake more vigorously and longer |
-| Board enters flash-download mode at boot | GPIO8 (MPU SCL) floated LOW because MPU was unplugged — plug it back in |
-| Both OLED and MPU stop ACKing at the same time | I²C bus shorted — unplug everything and rebuild one component at a time |
+| Symptom                                        | First thing to check                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `gochi ping` doesn't return `PONG`             | USB cable (data, not power); `gochi daemon status`                       |
+| OLED is dark but `gochi i2c` shows `0x3C`      | Panel is dead — try a different OLED                                     |
+| OLED + `0x3C` both missing                     | SDA/SCL swapped; VCC on wrong rail                                       |
+| Buzzer is silent during `gochi test buzzer`    | It's an active buzzer, not passive                                       |
+| MPU `0x68` missing on Bus B                    | SDA/SCL swapped on MPU side, or AD0 pulled HIGH (try `0x69`)             |
+| MPU `0x68` shows up but gestures don't fire    | Lift more briskly (>1.25 g for 250 ms); shake more vigorously and longer |
+| Board enters flash-download mode at boot       | GPIO8 (MPU SCL) floated LOW because MPU was unplugged — plug it back in  |
+| Both OLED and MPU stop ACKing at the same time | I²C bus shorted — unplug everything and rebuild one component at a time  |
 
 For anything not on this list, the fastest tool is `gochi i2c` — it
 tells you immediately whether a device is electrically alive on the
