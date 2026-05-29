@@ -195,23 +195,40 @@ program
   .description("scan both I2C buses and list every device that ACKs")
   .action(async () => {
     const result = await client.i2c();
-    if (!result.ok) {
-      print(result);
+
+    // Daemon reachable but the board isn't — most commonly because
+    // `gochi stop` released the serial port. Tell the user how to fix it
+    // instead of dumping a JSON error blob at them.
+    if (!result.ok || result.connected === false) {
+      const why =
+        result.message ?? "no response from the daemon (device may be disconnected)";
+      console.error(`i2c scan failed: ${why}`);
+      console.error("");
+      console.error("If you ran `gochi stop`, run `gochi start` to reconnect.");
+      console.error("Otherwise check `gochi daemon status` and the USB cable.");
       process.exit(1);
     }
-    // The firmware replies with `{"A":[...],"B":[...]}` — but the
-    // daemon may pass it as a parsed object or as the raw string,
-    // depending on how it round-tripped through transport.
-    let parsed: { A?: string[]; B?: string[] };
-    try {
-      parsed =
-        typeof result.response === "string"
-          ? JSON.parse(result.response)
-          : (result.response as any);
-    } catch {
-      print(result);
-      return;
+
+    // The firmware replies with `{"A":[...],"B":[...]}` — the daemon
+    // may pass it as a parsed object or as the raw string. Either way,
+    // guard against an empty/garbage payload so we don't crash on
+    // `parsed.A` if the daemon handed us null.
+    let parsed: { A?: string[]; B?: string[] } | null = null;
+    const raw = result.response;
+    if (raw != null) {
+      try {
+        parsed = typeof raw === "string" ? JSON.parse(raw) : (raw as any);
+      } catch {
+        // fall through to the "bad payload" handler below
+      }
     }
+    if (parsed == null || typeof parsed !== "object") {
+      console.error("i2c scan failed: the daemon returned an empty or malformed response.");
+      console.error(`Raw payload: ${JSON.stringify(raw)}`);
+      console.error("Try `gochi start` to refresh the device connection.");
+      process.exit(1);
+    }
+
     const buses: Array<[string, string, string[]]> = [
       ["A", "hardware I2C, GPIO5/6", parsed.A ?? []],
       ["B", "software I2C, GPIO7/8", parsed.B ?? []],
