@@ -26,6 +26,7 @@ arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
 | ------------------- | --------------------------------------------- |
 | `make build`        | Compile the sketch                            |
 | `make flash`        | Compile + upload to the board                 |
+| `make erase`        | Wipe the entire flash (factory reset)         |
 | `make monitor`      | Open the serial monitor (115200, Ctrl-C exits)|
 | `make flash-monitor`| Flash, then open the monitor                  |
 | `make db`           | Regenerate `compile_commands.json` for Zed    |
@@ -85,10 +86,15 @@ Format: plain `KEY=value`, one per line — no quotes, no `export`,
   `--clang-tidy` flag in `.zed/settings.json`. No separate binary needed. For a
   terminal lint pass, `brew install llvm` provides a standalone `clang-tidy`.
 
-The board's USB port is auto-detected. If it's wrong, pass it explicitly:
+The board's USB port is auto-detected on macOS (`/dev/cu.usbmodem*`)
+and Linux (`/dev/ttyACM*`). On Windows it isn't auto-detected — run
+`make ports` (or Device Manager → **Ports (COM & LPT)**) to find the
+COMx and pass it explicitly:
 
 ```sh
-make flash PORT=/dev/cu.usbmodemXXXX
+make flash PORT=/dev/cu.usbmodemXXXX    # macOS
+make flash PORT=/dev/ttyACM0            # Linux / WSL
+make flash PORT=COM7                    # Windows
 ```
 
 ## Board notes
