@@ -15,7 +15,21 @@ ARDUINO := arduino-cli --config-file $(CURDIR)/firmware/arduino-cli.yaml
 # All firmware sources, excluding the generated build/ tree.
 SRC    := $(shell find firmware -name build -prune -o -name '*.ino' -print -o -name '*.cpp' -print -o -name '*.h' -print)
 
+# Cross-platform "open this file in the default app". macOS uses `open`,
+# Linux uses `xdg-open`, MSYS / Git Bash on Windows shells out to cmd's
+# built-in `start`. WSL falls into the Linux branch and works if a Linux
+# browser is installed; otherwise override OPEN to `cmd.exe /c start`.
+UNAME_S := $(shell uname -s 2>/dev/null)
+ifeq ($(UNAME_S),Darwin)
+  OPEN := open
+else ifeq ($(UNAME_S),Linux)
+  OPEN := xdg-open
+else
+  OPEN := cmd //c start
+endif
+
 .PHONY: build db flash upload monitor flash-monitor ports format format-check clean
+.PHONY: test-led test-oled test-buzzer test-mpu
 
 ## build         — compile the sketch
 build:
@@ -64,3 +78,31 @@ format-check:
 ## clean         — remove build artifacts
 clean:
 	rm -rf $(BUILD)
+
+# --- Hardware bring-up tests (firmware/tests/<name>) -------------------
+# Each test is a standalone sketch sharing the main firmware's config.h
+# pin map. `make test-<name>` compiles and flashes it to the board.
+
+## test-led       — compile + flash the LED-blink bring-up test
+test-led:
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path firmware/tests/led/build firmware/tests/led
+	$(ARDUINO) upload  --fqbn $(FQBN) --port $(PORT) --input-dir firmware/tests/led/build firmware/tests/led
+
+## test-oled      — compile + flash the OLED bring-up test
+test-oled:
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path firmware/tests/oled/build firmware/tests/oled
+	$(ARDUINO) upload  --fqbn $(FQBN) --port $(PORT) --input-dir firmware/tests/oled/build firmware/tests/oled
+
+## test-buzzer    — compile + flash the buzzer bring-up test
+test-buzzer:
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path firmware/tests/buzzer/build firmware/tests/buzzer
+	$(ARDUINO) upload  --fqbn $(FQBN) --port $(PORT) --input-dir firmware/tests/buzzer/build firmware/tests/buzzer
+
+## test-mpu       — compile + flash the MPU-6050 streaming test, then
+##                  open the live viewer in the default browser. Needs
+##                  Chrome or Edge (Web Serial API). If `gochi` is
+##                  holding the port, `gochi stop` first.
+test-mpu:
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path firmware/tests/mpu/build firmware/tests/mpu
+	$(ARDUINO) upload  --fqbn $(FQBN) --port $(PORT) --input-dir firmware/tests/mpu/build firmware/tests/mpu
+	@$(OPEN) firmware/tests/mpu/visualize.html
