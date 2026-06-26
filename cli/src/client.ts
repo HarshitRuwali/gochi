@@ -131,3 +131,13 @@ export const ping = () => call("POST", "/ping");
 export const i2c = () => call("GET", "/i2c");
 export const stop = () => call("POST", "/stop");
 export const start = () => call("POST", "/start");
+// Availability status — applies a named profile (face + mood + optional text).
+export const status = (name: string) => call("POST", "/status", { name });
+export const statuses = () => call("GET", "/statuses");
+// Spotify "now playing" state stored in the daemon so the VS Code extension
+// heartbeat can defer to it instead of overwriting the track with project text.
+export const setSpotifyTrack = (track: string | null, image?: string | null) =>
+  call("POST", "/spotify/track", { track: track ?? null, image: image ?? null });
+export const getSpotifyTrack = () => call("GET", "/spotify/track");
+// BLE device connection — tells the daemon to connect to a specific BLE device.
+export const bleConnect = (device: string) => call("POST", "/ble/connect", { device });

@@ -107,6 +107,6 @@ void FreeMode::update(uint32_t now, ViewManager& vm) {
     scheduleMood_(now);
     pickExpression_(now, vm, true);  // a mood shift gets a (quiet) jingle
   } else if (static_cast<int32_t>(now - nextExprMs_) >= 0) {
-    pickExpression_(now, vm, false);  // a routine expression tick — silent
+    pickExpression_(now, vm, true);  // a routine expression tick — play jingle
   }
 }

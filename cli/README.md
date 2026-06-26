@@ -65,6 +65,19 @@ gochi face                # opens a select with all 12 faces
 gochi mood playful
 gochi mood                # opens a select with all 5 moods
 
+# availability status — applies a preset (face + mood + optional text)
+gochi status              # opens a rich picker with descriptions
+gochi status available
+gochi status busy
+gochi status in-meeting
+gochi status deep-focus
+gochi status frustrated
+gochi status on-break
+gochi status away
+gochi status do-not-disturb
+gochi status reviewing
+gochi status thinking
+
 # text
 gochi text hello there    # extra args are joined
 
@@ -77,6 +90,7 @@ gochi image ./icon.png --invert --bg white  # invert + white letterbox
 gochi get state
 gochi get fps
 gochi list faces
+gochi list statuses    # all availability presets
 gochi ping
 gochi health
 
@@ -93,6 +107,16 @@ gochi test all           # run them all in order
 
 Faces: `neutral happy sad sleepy excited surprised angry blink love sexy shy dead`.
 Moods: `content playful grumpy sleepy affectionate`.
+Statuses: `available busy in-meeting deep-focus frustrated on-break away do-not-disturb reviewing thinking`.
+
+### Spotify
+
+```sh
+gochi spotify login <client-id>  # one-time auth (opens a browser)
+gochi spotify now                # print + display the current track
+gochi spotify watch              # live polling loop — push every track change
+gochi spotify logout             # remove stored tokens
+```
 
 The CLI talks to the daemon over `~/.tamagotchi/daemon.sock` by default.
 Set `GOCHI_URL=http://host:port` to point it at a remote daemon's
@@ -168,6 +192,8 @@ returns 200 either way** — when offline, the response is
 | POST   | /text    | `{"text":"..."}`     | `SHOW text …`   |
 | POST   | /image   | `{"data":"<b64>"}`   | `SHOW image …` (128×64 1bpp, MSB-first) |
 | POST   | /mood    | `{"name":"..."}`     | `SET mood …`    |
+| POST   | /status  | `{"name":"..."}`     | `SET mood … + SHOW face/text …` (preset) |
+| GET    | /statuses | —                   | list all status presets |
 | GET    | /state   | —                    | `GET state`     |
 | GET    | /fps     | —                    | `GET fps`       |
 | GET    | /faces   | —                    | `LIST faces`    |
@@ -178,8 +204,216 @@ Quick check (HTTP frontend must be enabled):
 ```sh
 curl http://localhost:7474/health
 curl -X POST http://localhost:7474/face -H 'content-type: application/json' -d '{"name":"happy"}'
+curl -X POST http://localhost:7474/status -H 'content-type: application/json' -d '{"name":"in-meeting"}'
+curl http://localhost:7474/statuses
 curl http://localhost:7474/state
 ```
+
+## Spotify integration
+
+Gochi can scroll the currently playing Spotify track on the OLED display. It
+uses **OAuth 2.0 Authorization Code + PKCE** — no client secret needed, and
+tokens are stored locally at `~/.tamagotchi/spotify.json` (mode `0600`).
+
+### 1. Create a Spotify app
+
+1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and create an app.
+2. Under **Edit Settings → Redirect URIs**, add: `http://127.0.0.1:8765/callback`
+   > Use `127.0.0.1`, **not** `localhost` — Spotify's dashboard accepts `http://` only for the
+   > loopback IP (`127.0.0.1`), not for the hostname `localhost`.
+3. Copy the **Client ID** (you don't need the secret).
+
+### 2. Login
+
+```sh
+gochi spotify login <your-client-id>
+```
+
+This opens your browser at the Spotify consent page. After you approve, the
+callback is captured automatically on `127.0.0.1:8765` and tokens are saved.
+You only need to do this once; tokens are refreshed automatically.
+
+If your browser doesn't redirect back (e.g. a corporate proxy blocks loopback
+redirects), the CLI also accepts a manual paste — just copy the full redirect
+URL from your browser's address bar and paste it into the terminal when
+prompted.
+
+### 3. Commands
+
+```sh
+gochi spotify now     # one-shot: print current track + push to display
+gochi spotify watch   # live loop — polls every 10 s, pushes on track change
+gochi spotify logout  # remove stored tokens
+```
+
+`watch` runs until Ctrl-C. It only sends a command to the device when the
+track actually changes, so it's quiet if you're listening to one song for a while.
+
+**Example output:**
+
+```
+Watching Spotify… (updates every 10s, Ctrl-C to stop)
+
+▶  Bohemian Rhapsody - Queen
+▶  Stairway to Heaven - Led Zeppelin
+⏸  Stairway to Heaven - Led Zeppelin
+```
+
+### Display format
+
+The track is shown as `Song Title - Artist` as scrolling text on the OLED.
+Long titles scroll across the full 128 px width automatically (firmware handles it).
+
+### Scopes requested
+
+| Scope | Why |
+| ----- | --- |
+| `user-read-currently-playing` | Fetch the active track |
+| `user-read-playback-state` | Know if playback is paused |
+
+No write scopes are ever requested.
+
+## Availability status
+
+`gochi status` composes three primitives (`SET mood`, `SHOW face`, `SHOW text`) into
+one named preset. Statuses with a short text label show the **text view** so
+colleagues can read them at a glance; expressive statuses show the matching
+**face expression** instead.
+
+| Name              | Visible display  | Face       | Mood         |
+| ----------------- | ---------------- | ---------- | ------------ |
+| `available`       | happy face       | happy      | content      |
+| `busy`            | neutral face     | neutral    | grumpy       |
+| `in-meeting`      | "In Meeting"     | neutral    | content      |
+| `deep-focus`      | "Deep Focus"     | sleepy     | sleepy       |
+| `frustrated`      | angry face       | angry      | grumpy       |
+| `on-break`        | "On Break!"      | excited    | playful      |
+| `away`            | "Away"           | sleepy     | sleepy       |
+| `do-not-disturb`  | "DND"            | dead       | grumpy       |
+| `reviewing`       | "Reviewing"      | surprised  | content      |
+| `thinking`        | surprised face   | surprised  | playful      |
+
+Presets are defined in `src/status.ts`. Add or edit entries there; the daemon,
+client, and CLI all pick them up at build time.
+
+The HTTP endpoint applies mood + view atomically (mood first, then the
+view switch) and responds:
+
+```json
+{ "ok": true, "connected": true, "status": "in-meeting", "label": "In Meeting" }
+```
+
+## VS Code extension
+
+The `vscode-extension/` directory contains a companion extension that
+automatically updates the status based on what you're doing in the editor — no
+manual `gochi status` calls needed.
+
+### Install
+
+```sh
+cd vscode-extension
+npm install
+npm run compile
+# VS Code: Ctrl+Shift+P → Developer: Install Extension from Location…
+```
+
+The HTTP frontend must be enabled (it is by default after `gochi setup`):
+
+```sh
+gochi server enable
+```
+
+### Auto-detected states
+
+| State        | What triggers it                                              |
+| ------------ | ------------------------------------------------------------- |
+| `available`  | Default; also restored after errors clear or debug ends       |
+| `deep-focus` | Sustained typing for 45 s with no debug session or errors     |
+| `thinking`   | A debug session is active                                     |
+| `frustrated` | 5+ new errors vs baseline, or a build/test task exits non-zero |
+| `away`       | No keyboard or editor activity for 5 minutes                  |
+
+Priority when multiple signals fire: **thinking › frustrated › deep-focus › available › away**.
+
+### Status bar
+
+A status-bar item (bottom-right) shows the current state at a glance:
+
+- `$(smiley) Available` — auto-mode tracking normally
+- `$(eye) Deep Focus` — sustained typing detected
+- `$(bug) Thinking` — debug session active
+- `$(warning) Frustrated` — error spike / build failure
+- `$(clock) Away` — idle timeout hit
+- `$(lock) Deep Focus (manual, 8m)` — manual override active, N minutes left
+- `$(circle-slash) Gochi (paused)` — auto-mode disabled via settings
+
+Clicking the item opens a quick-pick. If an override is active, the first
+option is **Resume auto-mode** (cancels the timer immediately).
+
+### Commands
+
+| Command                   | What it does                                          |
+| ------------------------- | ----------------------------------------------------- |
+| `Gochi: Set Status`       | Pick a status manually; pauses auto-mode for 30 min   |
+| `Gochi: Toggle Auto Mode` | Enable / disable automatic status tracking            |
+
+### Settings
+
+All thresholds are configurable under **Settings → Extensions → Gochi Activity Watcher**:
+
+| Setting                                | Default                   | Description                                                   |
+| -------------------------------------- | ------------------------- | ------------------------------------------------------------- |
+| `gochi.autoMode.enabled`               | `true`                    | Enable / disable auto tracking                                |
+| `gochi.daemonUrl`                      | `http://localhost:7474`   | URL of the Gochi HTTP frontend                                |
+| `gochi.projectLabel`                   | `""` (workspace folder)   | Project name shown as `"Label \| State"` on the OLED display  |
+| `gochi.autoMode.idleTimeoutMinutes`    | `5`                       | Minutes of inactivity before switching to `away`              |
+| `gochi.autoMode.focusDelaySeconds`     | `45`                      | Seconds of sustained typing to trigger `deep-focus`           |
+| `gochi.autoMode.errorThreshold`        | `5`                       | New errors above baseline that trigger `frustrated`           |
+| `gochi.autoMode.manualOverrideMinutes` | `30`                      | Minutes auto-mode is paused after a manual status pick        |
+
+#### Project label
+
+Every auto state transition overlays a `"ProjectName | State"` message on the
+display so colleagues can see both which project you're on and what you're doing.
+
+By default the workspace folder name is used automatically. To override it,
+add to your project's `.vscode/settings.json`:
+
+```jsonc
+// Project Alpha
+{ "gochi.projectLabel": "Alpha" }
+
+// Project Beta
+{ "gochi.projectLabel": "Beta" }
+```
+
+Set `"gochi.projectLabel": ""` to disable the overlay entirely — the pet will
+show only the bare face/text from the status preset.
+
+What the display shows after each transition:
+
+| State        | Display (with label "Alpha")  |
+| ------------ | ----------------------------- |
+| `available`  | `Alpha \| Available`          |
+| `deep-focus` | `Alpha \| Deep Focus`         |
+| `thinking`   | `Alpha \| Thinking...`        |
+| `frustrated` | `Alpha \| Frustrated`         |
+| `away`       | `Alpha \| Away`               |
+
+Manual picks via the command palette also overlay the project label, so
+`Gochi: Set Status → In Meeting` shows `Alpha | In Meeting`.
+
+### Manual override
+
+Setting a status manually (via the command palette or `gochi status` in the
+terminal) activates a **manual override** that suppresses auto-transitions for
+`manualOverrideMinutes` minutes. While active:
+
+- The status bar shows a lock icon and the remaining time.
+- The `Set Status` picker offers a **Resume Auto** shortcut.
+- The toast notification after setting a status also has a **Resume Auto** button.
+- Calling `gochi kill` (to reload daemon code) does not clear the override.
 
 ## How it finds the pet
 
@@ -208,6 +442,8 @@ cli/
     windows.ts              Task Scheduler backend
   src/client.ts           CLI's transport (UDS by default, TCP if GOCHI_URL set)
   src/image.ts            PNG/JPG → 128×64 1bpp (dither + MSB-pack)
+  src/status.ts           availability status presets (name → face + mood + text)
+  src/spotify.ts          Spotify OAuth PKCE + now-playing polling
 ```
 
 ## Notes

@@ -39,6 +39,47 @@ export async function fileToFrameBase64(
   return Buffer.from(bytes).toString("base64");
 }
 
+// Convert an in-memory image buffer (PNG, JPEG, …) to a 128x64 1bpp frame
+// and return base64.  Unlike fileToFrameBase64 this uses `fit: fill` to
+// stretch the image to fill the full display — ideal for wide sources such
+// as Spotify Codes (~4.84:1 aspect ratio) where bars should be as tall as
+// possible rather than letterboxed.
+export async function bufferToFrameBase64(
+  buf: Buffer,
+  opts: ConvertOptions = {},
+): Promise<string> {
+  const dither = opts.dither !== false;
+  const threshold = opts.threshold ?? 128;
+  const background = opts.background ?? "black";
+  const bg = background === "white"
+    ? { r: 255, g: 255, b: 255, alpha: 1 as const }
+    : { r: 0, g: 0, b: 0, alpha: 1 as const };
+
+  const { data, info } = await sharp(buf)
+    .grayscale()
+    .resize(FRAME_WIDTH, FRAME_HEIGHT, { fit: "fill", background: bg })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  if (info.width !== FRAME_WIDTH || info.height !== FRAME_HEIGHT) {
+    throw new Error(`unexpected resize result: ${info.width}x${info.height}`);
+  }
+
+  const lum = new Int16Array(FRAME_WIDTH * FRAME_HEIGHT);
+  for (let i = 0; i < lum.length; i++) lum[i] = data[i];
+
+  const bits = dither
+    ? floydSteinberg(lum, FRAME_WIDTH, FRAME_HEIGHT)
+    : threshold1bpp(lum, threshold);
+
+  if (opts.invert) {
+    for (let i = 0; i < bits.length; i++) bits[i] ^= 1;
+  }
+
+  return Buffer.from(packMsbFirst(bits, FRAME_WIDTH, FRAME_HEIGHT)).toString("base64");
+}
+
 // Same as above but returns the raw 1024-byte packed bitmap.
 export async function fileToFrameBytes(
   path: string,

@@ -24,6 +24,7 @@
 #include "src/mood.h"
 #include "src/renderer.h"
 #include "src/transport.h"
+#include "src/transport_ble.h"
 #include "src/views/view_manager.h"
 
 // Flip to 0 to disable Free Mode: the pet sits in Desktop Mode forever
@@ -32,12 +33,20 @@
 // instead of handing back to autonomous behaviour).
 #define FREE_MODE_ENABLED 1
 
+// Flip to 1 to enable BLE transport alongside USB Serial. When enabled,
+// the device advertises as "Gochi-XXXX" and accepts commands over both
+// USB and BLE simultaneously. Responses are sent to both transports.
+#define BLE_ENABLED 1
+
 // The pet's mood — shared between the modes: SET mood writes it, Free Mode
 // reads and slowly evolves it. RAM-only (a reboot resets it to content).
 static Mood petMood = Mood::Content;
 
 static Renderer renderer;
 static Transport transport;
+#if BLE_ENABLED
+static BLETransport bleTransport;
+#endif
 static ViewManager viewManager;
 static DesktopMode desktopMode(transport, renderer, petMood);
 #if FREE_MODE_ENABLED
@@ -106,6 +115,13 @@ static bool bootButtonPressed(uint32_t now) {
 
 void setup() {
   transport.begin(115200);
+  
+#if BLE_ENABLED
+  bleTransport.begin("Gochi");
+  // Configure USB Serial transport to broadcast responses to BLE too.
+  transport.setBLEBroadcast(&bleTransport);
+#endif
+
   renderer.init();
   buzzer::begin();
 
@@ -121,9 +137,17 @@ void setup() {
 
   currentMode->onEnter(viewManager);
 #if FREE_MODE_ENABLED
+  #if BLE_ENABLED
+  transport.println("Tamagotchi ready (Free Mode, BLE enabled). Send any command for Desktop Mode.");
+  #else
   transport.println("Tamagotchi ready (Free Mode). Send any command for Desktop Mode.");
+  #endif
 #else
+  #if BLE_ENABLED
+  transport.println("Tamagotchi ready (Desktop Mode, BLE enabled — Free Mode disabled).");
+  #else
   transport.println("Tamagotchi ready (Desktop Mode — Free Mode disabled).");
+  #endif
 #endif
 }
 
@@ -131,7 +155,21 @@ void loop() {
   uint32_t now = millis();
 
   Command cmd;
+  bool gotCommand = false;
+  
+  // Poll USB Serial transport.
   if (transport.poll(cmd)) {
+    gotCommand = true;
+  }
+  
+#if BLE_ENABLED
+  // Poll BLE transport.
+  if (!gotCommand && bleTransport.poll(cmd)) {
+    gotCommand = true;
+  }
+#endif
+
+  if (gotCommand) {
     lastCmdMs = now;
     setMode(desktopMode);  // any command means a host is driving the pet
     currentMode->onCommand(cmd, viewManager);
@@ -217,8 +255,10 @@ void loop() {
   currentMode->update(now, viewManager);
 
   // Buzzer synced to the face. In Desktop Mode every expression change
-  // jingles; Free Mode stays quieter and plays its own jingle only on
-  // mood shifts, so it is not gated in here.
+  // jingles; Free Mode now also plays a jingle on every expression change
+  // (mood shifts go through pickExpression_ directly; expression ticks
+  // do too, so this gate only handles Desktop Mode's path to avoid
+  // double-playing when Free Mode has already called buzzer::play).
   ExpressionId expr = viewManager.face().expression();
   if (expr != jingledExpr) {
     jingledExpr = expr;

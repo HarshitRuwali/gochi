@@ -23,7 +23,10 @@ import { runDaemon } from "./daemon";
 import { fileToFrameBase64 } from "./image";
 import { runServer } from "./server";
 import * as service from "./service";
+import { spotifyLogin, spotifyLogout, spotifyNow, spotifyWatch } from "./spotify";
+import { STATUS_PROFILES } from "./status";
 import { runTest } from "./test";
+import { discoverDevices } from "./transport_ble";
 
 const VERSION: string = packageJson.version;
 
@@ -104,6 +107,24 @@ program
   });
 
 program
+  .command("status")
+  .description("set your availability status (office-friendly presets)")
+  .argument("[name]", "status name (e.g. available, busy, in-meeting, deep-focus)")
+  .action(async (name?: string) => {
+    const chosen =
+      name ??
+      (await select({
+        message: "Set your status:",
+        choices: STATUS_PROFILES.map((p) => ({
+          name: p.label,
+          value: p.name,
+          description: p.description,
+        })),
+      }));
+    print(await client.status(chosen));
+  });
+
+program
   .command("text")
   .description("show a line of text (long text scrolls)")
   .argument("<text...>", "the text to show")
@@ -176,6 +197,15 @@ list
   .command("faces")
   .description("list all expression names")
   .action(async () => print(await client.faces()));
+list
+  .command("statuses")
+  .description("list all availability status presets")
+  .action(() => {
+    const nameWidth = Math.max(...STATUS_PROFILES.map((p) => p.name.length)) + 2;
+    for (const p of STATUS_PROFILES) {
+      console.log(`  ${p.name.padEnd(nameWidth)} ${p.description}`);
+    }
+  });
 
 program
   .command("ping")
@@ -248,6 +278,39 @@ program
 
 // --- Self-test ---------------------------------------------------------
 
+// --- Spotify -----------------------------------------------------------
+
+const spotify = program
+  .command("spotify")
+  .description("connect Spotify and show now-playing on the display");
+
+spotify
+  .command("login")
+  .description("authenticate with Spotify (opens a browser, stores tokens)")
+  .argument("<client-id>", "your Spotify app Client ID from developer.spotify.com")
+  .action(async (clientId: string) => {
+    await spotifyLogin(clientId);
+  });
+
+spotify
+  .command("logout")
+  .description("remove stored Spotify tokens")
+  .action(() => spotifyLogout());
+
+spotify
+  .command("now")
+  .description("show the currently playing track on the display (one-shot)")
+  .action(async () => {
+    await spotifyNow();
+  });
+
+spotify
+  .command("watch")
+  .description("poll Spotify and push every track change to the display (Ctrl-C to stop)")
+  .action(async () => {
+    await spotifyWatch();
+  });
+
 program
   .command("test")
   .description("interactive hardware self-test (asks y/n per component)")
@@ -263,6 +326,56 @@ program
   .command("health")
   .description("daemon + device status")
   .action(async () => print(await client.health()));
+
+// --- Bluetooth LE ------------------------------------------------------
+
+const ble = program
+  .command("ble")
+  .description("Bluetooth LE device management");
+
+ble
+  .command("scan")
+  .description("scan for nearby Gochi devices over BLE")
+  .option("-t, --timeout <ms>", "scan timeout in milliseconds", "5000")
+  .action(async (opts: { timeout: string }) => {
+    const timeout = Number(opts.timeout);
+    if (!Number.isFinite(timeout) || timeout < 0) {
+      console.error("timeout must be a positive number");
+      process.exit(1);
+    }
+    
+    console.log(`Scanning for Gochi devices (${timeout}ms)...`);
+    try {
+      const devices = await discoverDevices(timeout);
+      if (devices.length === 0) {
+        console.log("No devices found.");
+        console.log("\nMake sure:");
+        console.log("  - Your Gochi device is powered on");
+        console.log("  - BLE is enabled in the firmware (BLE_ENABLED 1)");
+        console.log("  - Bluetooth is enabled on this computer");
+      } else {
+        console.log(`\nFound ${devices.length} device(s):\n`);
+        for (const dev of devices) {
+          console.log(`  ${dev.name}`);
+          console.log(`    Address: ${dev.address}`);
+        }
+        console.log("\nTo connect via BLE, use: gochi ble connect <name>");
+      }
+    } catch (e: any) {
+      console.error(`BLE scan failed: ${e?.message || e}`);
+      process.exit(1);
+    }
+  });
+
+ble
+  .command("connect")
+  .description("connect to a specific Gochi device via BLE")
+  .argument("<device>", "device name (e.g., Gochi-A1B2) or address")
+  .action(async (device: string) => {
+    console.log(`Connecting to ${device} via BLE...`);
+    const result = await client.bleConnect(device);
+    print(result);
+  });
 
 // --- Daemon management -------------------------------------------------
 

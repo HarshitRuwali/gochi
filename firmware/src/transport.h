@@ -9,6 +9,8 @@
 
 #include "command.h"
 
+class BLETransport;  // Forward declaration for optional BLE broadcasting
+
 class Transport {
  public:
   // Open the serial port at the given baud rate.
@@ -20,6 +22,10 @@ class Transport {
 
   // Send one response line (a newline is appended).
   void println(const char* s);
+  
+  // Register a BLE transport for response broadcasting. When set, println()
+  // sends to both USB Serial and BLE.
+  void setBLEBroadcast(BLETransport* ble);
 
  private:
   // Sized to hold `SHOW image <base64>` for a full 128x64 1bpp bitmap:
@@ -28,4 +34,5 @@ class Transport {
   char buf_[kLineCap];
   size_t len_ = 0;
   bool overflow_ = false;
+  BLETransport* ble_ = nullptr;
 };

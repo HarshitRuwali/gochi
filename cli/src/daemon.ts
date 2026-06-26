@@ -20,18 +20,22 @@ import {
   clearStaleSocket,
   ensureDaemonDir,
 } from "./ipc";
+import { findStatus, STATUS_PROFILES } from "./status";
 import { SerialTransport } from "./transport";
+import { BLETransport } from "./transport_ble";
+import type { ITransport } from "./transport_interface";
 
 export const DAEMON_VERSION = "0.1.0";
 
-// Device wraps the current SerialTransport (if any) and listens to the
-// discovery watcher for attach/detach. Only one port is connected at a
-// time — first-attached wins. Multi-device support is a future thing.
+// Device wraps the current transport (Serial or BLE) and listens to the
+// discovery watcher for attach/detach. Only one device is connected at a
+// time — first-attached wins for Serial, or explicit BLE connection.
 class Device {
-  private transport: SerialTransport | null = null;
+  private transport: ITransport | null = null;
   private path: string | null = null;
   private connecting = false;
-  // When stopped, the daemon releases the serial port and refuses to
+  private transportType: "serial" | "ble" = "serial";
+  // When stopped, the daemon releases the port and refuses to
   // open any new ones. Used for arduino-cli flashing — see
   // `gochi stop` and the firmware Makefile.
   private stopped = false;
@@ -77,6 +81,7 @@ class Device {
   async attach(path: string): Promise<void> {
     if (this.stopped || this.connecting || this.isConnected()) return;
     this.connecting = true;
+    this.transportType = "serial";
     try {
       const t = new SerialTransport(path);
       await t.open();
@@ -88,11 +93,50 @@ class Device {
       t.on("error", (e: Error) => log("serial error:", e.message));
       this.transport = t;
       this.path = path;
-      log(`connected to ${path}`);
+      log(`connected to ${path} (USB Serial)`);
     } catch (e: any) {
       log(`attach failed for ${path}:`, e?.message || e);
       this.transport = null;
       this.path = null;
+    } finally {
+      this.connecting = false;
+    }
+  }
+
+  async connectBLE(deviceId: string): Promise<{ ok: boolean; message: string }> {
+    if (this.connecting) {
+      return { ok: false, message: "already connecting" };
+    }
+    
+    // Disconnect from current device if any.
+    if (this.isConnected()) {
+      log(`disconnecting from current ${this.transportType} device`);
+      await this.transport?.close();
+      this.transport = null;
+      this.path = null;
+    }
+
+    this.connecting = true;
+    this.transportType = "ble";
+    try {
+      const t = new BLETransport(deviceId);
+      await t.open();
+      t.on("close", () => {
+        log(`BLE disconnected (${deviceId})`);
+        this.transport = null;
+        this.path = null;
+      });
+      t.on("error", (e: Error) => log("BLE error:", e.message));
+      this.transport = t;
+      this.path = deviceId;
+      log(`connected to ${deviceId} (BLE)`);
+      return { ok: true, message: `Connected to ${deviceId} via BLE` };
+    } catch (e: any) {
+      const msg = e?.message || String(e);
+      log(`BLE connect failed for ${deviceId}:`, msg);
+      this.transport = null;
+      this.path = null;
+      return { ok: false, message: `Failed to connect: ${msg}` };
     } finally {
       this.connecting = false;
     }
@@ -180,6 +224,11 @@ export async function runDaemon(): Promise<void> {
     send(res, { ok: true, connected: true, response });
   };
 
+  // Current Spotify "now playing" state.  Set by POST /spotify/track, cleared
+  // when playback stops. Used by the VS Code extension heartbeat to re-push
+  // the display without re-fetching from Spotify.
+  let spotifyDisplay: { track: string; image: string | null } | null = null;
+
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url || "/";
     const path = url.split("?")[0];
@@ -247,11 +296,72 @@ export async function runDaemon(): Promise<void> {
         }
         return sendCmd(res, `SET mood ${name}`);
       }
+
+      if (method === "POST" && path === "/status") {
+        const body = await readJson(req);
+        const name = body?.name;
+        if (typeof name !== "string" || !name) {
+          return send(res, { ok: false, connected: device.isConnected(), message: "missing name" });
+        }
+        const profile = findStatus(name);
+        if (!profile) {
+          const valid = STATUS_PROFILES.map((p) => p.name).join(", ");
+          return send(res, {
+            ok: false,
+            connected: device.isConnected(),
+            message: `unknown status "${name}". Valid: ${valid}`,
+          });
+        }
+        if (!device.isConnected()) {
+          return send(res, { ok: true, connected: false, message: "device offline; request ignored" });
+        }
+        // Apply mood first (background pet state), then switch the visible view.
+        await device.send(`SET mood ${profile.mood}`);
+        if (profile.text) {
+          await device.send(`SHOW text ${profile.text}`);
+        } else {
+          await device.send(`SHOW face ${profile.face}`);
+        }
+        return send(res, { ok: true, connected: true, status: profile.name, label: profile.label });
+      }
+
+      if (method === "GET" && path === "/statuses") {
+        return send(res, { ok: true, statuses: STATUS_PROFILES });
+      }
+
+      if (method === "POST" && path === "/spotify/track") {
+        const body = await readJson(req);
+        if (body?.track === null || body?.track === "") {
+          spotifyDisplay = null;
+        } else if (typeof body?.track === "string") {
+          spotifyDisplay = {
+            track: body.track,
+            image: typeof body.image === "string" && body.image.length > 0
+              ? body.image
+              : null,
+          };
+        }
+        return send(res, { ok: true, display: spotifyDisplay });
+      }
+      if (method === "GET" && path === "/spotify/track") {
+        return send(res, { ok: true, ...spotifyDisplay, track: spotifyDisplay?.track ?? null, image: spotifyDisplay?.image ?? null });
+      }
+
       if (method === "GET" && path === "/state") return sendCmd(res, "GET state");
       if (method === "GET" && path === "/fps") return sendCmd(res, "GET fps");
       if (method === "GET" && path === "/faces") return sendCmd(res, "LIST faces");
       if (method === "POST" && path === "/ping") return sendCmd(res, "PING");
       if (method === "GET" && path === "/i2c") return sendCmd(res, "SCAN i2c");
+
+      if (method === "POST" && path === "/ble/connect") {
+        const body = await readJson(req);
+        const deviceId = body?.device;
+        if (typeof deviceId !== "string" || !deviceId) {
+          return send(res, { ok: false, message: "missing device" });
+        }
+        const result = await device.connectBLE(deviceId);
+        return send(res, result);
+      }
 
       send(res, { ok: false, message: "not found" }, 404);
     } catch (e: any) {

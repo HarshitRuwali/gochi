@@ -1,6 +1,7 @@
 // transport.cpp — buffered serial line transport (see transport.h).
 
 #include "transport.h"
+#include "transport_ble.h"
 
 #include <Arduino.h>
 
@@ -39,4 +40,14 @@ bool Transport::poll(Command& out) {
   return false;
 }
 
-void Transport::println(const char* s) { Serial.println(s); }
+void Transport::println(const char* s) {
+  Serial.println(s);
+  // Broadcast to BLE if configured and connected.
+  if (ble_ != nullptr && ble_->isConnected()) {
+    ble_->println(s);
+  }
+}
+
+void Transport::setBLEBroadcast(BLETransport* ble) {
+  ble_ = ble;
+}

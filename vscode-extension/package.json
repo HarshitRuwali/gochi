@@ -1,0 +1,76 @@
+{
+  "name": "gochi-activity",
+  "displayName": "Gochi Activity Watcher",
+  "description": "Auto-updates your Gochi desk pet based on VS Code activity — typing, debugging, errors, idle time.",
+  "version": "0.1.0",
+  "publisher": "gochi",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gochi.toggleAutoMode",
+        "title": "Gochi: Toggle Auto Mode"
+      },
+      {
+        "command": "gochi.setStatus",
+        "title": "Gochi: Set Status"
+      }
+    ],
+    "configuration": {
+      "title": "Gochi Activity Watcher",
+      "properties": {
+        "gochi.autoMode.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically update the pet's status based on VS Code activity."
+        },
+        "gochi.daemonUrl": {
+          "type": "string",
+          "default": "http://localhost:7474",
+          "description": "URL of the Gochi HTTP frontend (started by `gochi server enable`)."
+        },
+        "gochi.autoMode.idleTimeoutMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Minutes of no activity before switching to 'away'."
+        },
+        "gochi.autoMode.focusDelaySeconds": {
+          "type": "number",
+          "default": 45,
+          "minimum": 10,
+          "description": "Seconds of sustained typing before switching to 'deep-focus'."
+        },
+        "gochi.autoMode.errorThreshold": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Number of new errors (vs baseline) that triggers 'frustrated'."
+        },
+        "gochi.autoMode.manualOverrideMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Minutes to suppress auto-updates after a manual `gochi status` call."
+        },
+        "gochi.projectLabel": {
+          "type": "string",
+          "default": "",
+          "description": "Project name shown on the display as 'ProjectName | State' (e.g. 'Alpha'). Leave empty to use the workspace folder name automatically."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

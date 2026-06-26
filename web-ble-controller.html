@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gochi BLE Controller</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 25px;
+      font-size: 14px;
+    }
+
+    .status {
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status.disconnected {
+      background: #fee;
+      color: #c33;
+    }
+
+    .status.connected {
+      background: #efe;
+      color: #3c3;
+    }
+
+    .status.connecting {
+      background: #ffeaa7;
+      color: #d63031;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .section {
+      margin-top: 25px;
+      padding-top: 25px;
+      border-top: 2px solid #f0f0f0;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .button-group button {
+      padding: 10px 16px;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .response {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #333;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .response-item {
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .response-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .timestamp {
+      color: #999;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .error {
+      background: #fee;
+      border-left-color: #c33;
+      color: #c33;
+    }
+
+    .info {
+      background: #e3f2fd;
+      border-left-color: #2196f3;
+      color: #1976d2;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Gochi BLE Controller</h1>
+    <p class="subtitle">Web Bluetooth Controller for your ESP32-C3 Tamagotchi</p>
+
+    <div id="status" class="status disconnected">
+      <span class="status-dot"></span>
+      <span>Disconnected</span>
+    </div>
+
+    <div class="info" id="browser-support">
+      ✓ Web Bluetooth supported
+    </div>
+
+    <button id="connectBtn" onclick="connect()">Connect to Gochi</button>
+    <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+
+    <div id="controls" style="display: none;">
+      <div class="section">
+        <div class="section-title">😊 Faces</div>
+        <div class="button-group">
+          <button onclick="sendCommand('SHOW face neutral')">Neutral</button>
+          <button onclick="sendCommand('SHOW face happy')">Happy</button>
+          <button onclick="sendCommand('SHOW face sad')">Sad</button>
+          <button onclick="sendCommand('SHOW face sleepy')">Sleepy</button>
+          <button onclick="sendCommand('SHOW face excited')">Excited</button>
+          <button onclick="sendCommand('SHOW face surprised')">Surprised</button>
+          <button onclick="sendCommand('SHOW face angry')">Angry</button>
+          <button onclick="sendCommand('SHOW face love')">Love</button>
+          <button onclick="sendCommand('SHOW face shy')">Shy</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">💭 Moods</div>
+        <div class="button-group">
+          <button onclick="sendCommand('SET mood content')">Content</button>
+          <button onclick="sendCommand('SET mood playful')">Playful</button>
+          <button onclick="sendCommand('SET mood grumpy')">Grumpy</button>
+          <button onclick="sendCommand('SET mood sleepy')">Sleepy</button>
+          <button onclick="sendCommand('SET mood affectionate')">Affectionate</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">� Office Status</div>
+        <div class="button-group">
+          <button onclick="setStatus('available')">✅ Available</button>
+          <button onclick="setStatus('busy')">⚠️ Busy</button>
+          <button onclick="setStatus('in-meeting')">📞 In Meeting</button>
+          <button onclick="setStatus('deep-focus')">🧠 Deep Focus</button>
+          <button onclick="setStatus('on-break')">☕ On Break</button>
+          <button onclick="setStatus('away')">🚶 Away</button>
+          <button onclick="setStatus('do-not-disturb')">🚫 DND</button>
+          <button onclick="setStatus('frustrated')">😤 Frustrated</button>
+          <button onclick="setStatus('reviewing')">👀 Reviewing</button>
+          <button onclick="setStatus('thinking')">🤔 Thinking</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🎵 Spotify</div>
+        <div class="info" style="font-size: 12px; margin-bottom: 10px;">
+          Run <code>gochi spotify watch</code> on your laptop/desktop to display current songs automatically. 
+          Spotify integration requires the daemon and can't be controlled directly via BLE.
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">�💬 Custom Text</div>
+        <input type="text" id="customText" placeholder="Enter text to display..." maxlength="100">
+        <button onclick="sendText()">Show Text</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🔧 Commands</div>
+        <div class="button-group">
+          <button onclick="sendCommand('PING')">Ping</button>
+          <button onclick="sendCommand('GET state')">Get State</button>
+          <button onclick="sendCommand('GET fps')">Get FPS</button>
+          <button onclick="sendCommand('LIST faces')">List Faces</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📡 Device Responses</div>
+        <div id="responses" class="response"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const CHAR_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // Write to device
+    const CHAR_TX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // Read from device (notifications)
+
+    let device = null;
+    let rxCharacteristic = null;
+    let txCharacteristic = null;
+    let lineBuffer = '';
+
+    // Check browser support
+    if (!navigator.bluetooth) {
+      document.getElementById('browser-support').innerHTML = 
+        '❌ Web Bluetooth not supported. Please use Chrome or Edge.';
+      document.getElementById('browser-support').className = 'error';
+      document.getElementById('connectBtn').disabled = true;
+    }
+
+    function updateStatus(status, className) {
+      const statusEl = document.getElementById('status');
+      statusEl.className = `status ${className}`;
+      statusEl.innerHTML = `<span class="status-dot"></span><span>${status}</span>`;
+    }
+
+    function addResponse(message, isError = false) {
+      const responsesEl = document.getElementById('responses');
+      const time = new Date().toLocaleTimeString();
+      const item = document.createElement('div');
+      item.className = 'response-item';
+      if (isError) item.style.color = '#c33';
+      item.innerHTML = `<span class="timestamp">${time}</span><span>${message}</span>`;
+      responsesEl.insertBefore(item, responsesEl.firstChild);
+      
+      // Keep only last 20 responses
+      while (responsesEl.children.length > 20) {
+        responsesEl.removeChild(responsesEl.lastChild);
+      }
+    }
+
+    async function connect() {
+      try {
+        updateStatus('Scanning...', 'connecting');
+        
+        // Request device
+        device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { namePrefix: 'Gochi' },
+            { services: [SERVICE_UUID] }
+          ],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        updateStatus('Connecting...', 'connecting');
+
+        // Connect to GATT server
+        const server = await device.gatt.connect();
+        
+        // Get service and characteristics
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        rxCharacteristic = await service.getCharacteristic(CHAR_RX_UUID);
+        txCharacteristic = await service.getCharacteristic(CHAR_TX_UUID);
+
+        // Subscribe to notifications
+        await txCharacteristic.startNotifications();
+        txCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+
+        // Handle disconnection
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+
+        updateStatus(`Connected to ${device.name}`, 'connected');
+        document.getElementById('connectBtn').disabled = true;
+        document.getElementById('disconnectBtn').disabled = false;
+        document.getElementById('controls').style.display = 'block';
+        
+        addResponse(`✓ Connected to ${device.name}`);
+      } catch (error) {
+        updateStatus('Connection failed', 'disconnected');
+        addResponse(`Error: ${error.message}`, true);
+        console.error('Connection error:', error);
+      }
+    }
+
+    async function disconnect() {
+      if (device && device.gatt.connected) {
+        device.gatt.disconnect();
+      }
+    }
+
+    function onDisconnected() {
+      updateStatus('Disconnected', 'disconnected');
+      document.getElementById('connectBtn').disabled = false;
+      document.getElementById('disconnectBtn').disabled = true;
+      document.getElementById('controls').style.display = 'none';
+      addResponse('✗ Disconnected from device');
+      device = null;
+      rxCharacteristic = null;
+      txCharacteristic = null;
+    }
+
+    function handleNotification(event) {
+      const value = event.target.value;
+      const decoder = new TextDecoder('utf-8');
+      const text = decoder.decode(value);
+      
+      lineBuffer += text;
+      
+      // Process complete lines
+      let newlineIndex;
+      while ((newlineIndex = lineBuffer.indexOf('\n')) >= 0) {
+        const line = lineBuffer.substring(0, newlineIndex).replace(/\r$/, '');
+        lineBuffer = lineBuffer.substring(newlineIndex + 1);
+        
+        if (line && !line.startsWith('Tamagotchi')) {
+          addResponse(`← ${line}`);
+        }
+      }
+    }
+
+    async function sendCommand(command) {
+      if (!rxCharacteristic) {
+        addResponse('Not connected!', true);
+        return;
+      }
+
+      try {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(command + '\n');
+        await rxCharacteristic.writeValue(data);
+        addResponse(`→ ${command}`);
+      } catch (error) {
+        addResponse(`Send error: ${error.message}`, true);
+        console.error('Send error:', error);
+      }
+    }
+
+    function sendText() {
+      const text = document.getElementById('customText').value.trim();
+      if (text) {
+        sendCommand(`SHOW text ${text}`);
+        document.getElementById('customText').value = '';
+      }
+    }
+
+    // Status profiles - send multi-command sequences
+    async function setStatus(statusName) {
+      const profiles = {
+        'available': { mood: 'content', display: 'SHOW face happy' },
+        'busy': { mood: 'grumpy', display: 'SHOW face neutral' },
+        'in-meeting': { mood: 'content', display: 'SHOW text In Meeting' },
+        'deep-focus': { mood: 'sleepy', display: 'SHOW text Deep Focus' },
+        'on-break': { mood: 'playful', display: 'SHOW text On Break!' },
+        'away': { mood: 'sleepy', display: 'SHOW text Away' },
+        'do-not-disturb': { mood: 'grumpy', display: 'SHOW text DND' },
+        'frustrated': { mood: 'grumpy', display: 'SHOW face angry' },
+        'reviewing': { mood: 'content', display: 'SHOW text Reviewing' },
+        'thinking': { mood: 'playful', display: 'SHOW face surprised' }
+      };
+
+      const profile = profiles[statusName];
+      if (!profile) {
+        addResponse(`Unknown status: ${statusName}`, true);
+        return;
+      }
+
+      // Send mood first, then display command
+      await sendCommand(`SET mood ${profile.mood}`);
+      // Small delay to ensure commands are processed in order
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await sendCommand(profile.display);
+    }
+
+    // Allow Enter key to send text
+    document.getElementById('customText').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendText();
+      }
+    });
+  </script>
+</body>
+</html>

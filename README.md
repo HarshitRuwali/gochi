@@ -55,6 +55,20 @@ plane reacting to roll / pitch plus live numeric values for all six
 axes. See [`firmware/tests/README.md`](firmware/tests/README.md) for
 details.
 
+## Bluetooth LE (Wireless Control)
+
+The firmware supports **Bluetooth Low Energy** for wireless control! The device advertises as `Gochi-XXXX` and accepts the same commands over BLE that it does over USB Serial.
+
+**Quick Start:**
+1. Flash the firmware with `make flash` (BLE is enabled by default)
+2. Open `web-ble-controller.html` in Chrome or Edge
+3. Click "Connect to Gochi" and select your device
+4. Control wirelessly from your browser!
+
+**Alternative:** Use mobile apps like **nRF Connect** or **LightBlue** on iOS/Android.
+
+See [BLE-SETUP.md](BLE-SETUP.md) for complete setup instructions and protocol details.
+
 ## Build-time configuration (`.env`)
 
 A few build-time knobs live in a user-local `.env` at the repo root.
@@ -96,6 +110,88 @@ make flash PORT=/dev/cu.usbmodemXXXX    # macOS
 make flash PORT=/dev/ttyACM0            # Linux / WSL
 make flash PORT=COM7                    # Windows
 ```
+
+## CLI, HTTP API & VS Code extension
+
+The `cli/` directory contains the Node CLI and daemon that drive the pet over
+USB. See [`cli/README.md`](cli/README.md) for full documentation including:
+
+- `gochi status` — set your availability (busy, in-meeting, deep-focus, …)
+- HTTP API (`/status`, `/statuses`, and all device commands)
+- VS Code extension (`vscode-extension/`) that auto-updates the pet based on
+  editor activity — typing, debugging, build results, idle time
+
+## Availability status
+
+Set your current availability with one command — useful in an office where
+colleagues can glance at your desk:
+
+```sh
+gochi status available       # happy face, content mood
+gochi status busy            # neutral face, grumpy mood
+gochi status in-meeting      # scrolls "In Meeting"
+gochi status deep-focus      # scrolls "Deep Focus"
+gochi status frustrated      # angry face, grumpy mood
+gochi status on-break        # scrolls "On Break!"
+gochi status away            # scrolls "Away"
+gochi status do-not-disturb  # scrolls "DND"
+gochi status reviewing       # scrolls "Reviewing"
+gochi status thinking        # surprised face, playful mood
+
+gochi list statuses          # show all presets with descriptions
+```
+
+## VS Code extension — auto status + project context
+
+The `vscode-extension/` directory contains a companion extension that watches
+your editor activity and **automatically** updates the pet — no manual
+`gochi status` calls needed.
+
+### What it detects
+
+| Activity | Status shown on pet |
+| -------- | ------------------- |
+| 45 s of sustained typing | `deep-focus` |
+| Debug session active | `thinking` |
+| 5+ new errors / build fails | `frustrated` |
+| Errors clear / build passes | `available` |
+| 5 min no keyboard activity | `away` |
+
+### Project label
+
+Every state transition also **overlays a project-aware message** on the display
+so colleagues can see both which project you're on and what you're doing:
+
+```
+Alpha | Deep Focus
+Alpha | Thinking...
+Alpha | Frustrated
+```
+
+By default the workspace folder name is used. Override it per-project in
+`.vscode/settings.json`:
+
+```jsonc
+// Project Alpha workspace
+{ "gochi.projectLabel": "Alpha" }
+
+// Project Beta workspace
+{ "gochi.projectLabel": "Beta" }
+```
+
+Set `"gochi.projectLabel": ""` to disable the overlay and show the bare face/text
+from the status preset instead.
+
+### Install
+
+```sh
+cd vscode-extension
+npm install && npm run compile
+# VS Code: Ctrl+Shift+P → Developer: Install Extension from Location…
+gochi server enable   # HTTP frontend must be running
+```
+
+See [`cli/README.md`](cli/README.md) for the full extension reference.
 
 ## Board notes
 
